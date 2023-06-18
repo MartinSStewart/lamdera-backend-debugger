@@ -1,34 +1,95 @@
-module Types exposing (..)
+module Types exposing (..)
 
-import Browser exposing (UrlRequest)
-import Browser.Navigation exposing (Key)
-import Url exposing (Url)
-
-
-type alias FrontendModel =
-    { key : Key
-    , message : String
-    }
+import Array exposing (Array)
+import Browser exposing (UrlRequest)
+import Browser.Navigation exposing (Key)
+import Dict exposing (Dict)
+import Lamdera exposing (ClientId, SessionId)
+import Set exposing (Set)
+import Url exposing (Url)
 
 
-type alias BackendModel =
-    { message : String
-    }
+type FrontendModel
+    = LoadingSession LoadingData
+    | LoadedSession LoadedData
+    | HomePage { key : Key }
 
 
-type FrontendMsg
-    = UrlClicked UrlRequest
-    | UrlChanged Url
-    | NoOpFrontendMsg
+type alias LoadingData =
+    { key : Key, sessionName : SessionName }
 
 
-type ToBackend
-    = NoOpToBackend
+type alias LoadedData =
+    { key : Key
+    , sessionName : SessionName
+    , initialModel : Maybe String
+    , history : Array Event
+    , selected : Int
+    }
 
 
-type BackendMsg
-    = NoOpBackendMsg
+type alias BackendModel =
+    { sessions : Dict SessionName DebugSession
+    }
 
 
-type ToFrontend
-    = NoOpToFrontend
+type alias SessionName =
+    String
+
+
+type DataType
+    = Init Init_
+    | Update Update_
+    | UpdateFromFrontend UpdateFromFrontend_
+
+
+type alias Init_ =
+    { sessionName : SessionName, model : String }
+
+
+type alias Update_ =
+    { sessionName : SessionName, msg : String, newModel : String }
+
+
+type alias UpdateFromFrontend_ =
+    { sessionName : SessionName, msg : String, newModel : String, sessionId : String, clientId : String }
+
+
+type alias DebugSession =
+    { initialModel : Maybe String
+    , history : Array Event
+    , connections : Set ClientId
+    }
+
+
+type Event
+    = BackendMsgEvent BackendMsgEvent_
+    | ToBackendEvent ToBackendEvent_
+
+
+type alias BackendMsgEvent_ =
+    { msg : String, newModel : String }
+
+
+type alias ToBackendEvent_ =
+    { msg : String, newModel : String, sessionId : String, clientId : String }
+
+
+type FrontendMsg
+    = UrlClicked UrlRequest
+    | UrlChanged Url
+    | PressedEvent Int
+
+
+type ToBackend
+    = LoadSessionRequest String
+
+
+type BackendMsg
+    = NoOpBackendMsg
+    | ClientDisconnected SessionId ClientId
+
+
+type ToFrontend
+    = LoadSessionResponse DebugSession
+    | SessionUpdate DataType
