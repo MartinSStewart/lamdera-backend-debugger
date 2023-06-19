@@ -43,14 +43,18 @@ backend backendNoOp sessionName { init, update, updateFromFrontend, subscription
             ( newModel
             , Cmd.batch
                 [ cmd
-                , sendToViewer
-                    backendNoOp
-                    (Update
-                        { sessionName = sessionName
-                        , msg = Debug.toString msg
-                        , newModel = Debug.toString model
-                        }
-                    )
+                , if backendNoOp == msg then
+                    Cmd.none
+
+                  else
+                    sendToViewer
+                        backendNoOp
+                        (Update
+                            { sessionName = sessionName
+                            , msg = Debug.toString msg
+                            , newModel = Debug.toString model
+                            }
+                        )
                 ]
             )
     , updateFromFrontend =

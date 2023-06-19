@@ -22,26 +22,26 @@ decodeDataType =
                     2 ->
                         Json.Decode.map5
                             UpdateFromFrontend_
-                            Json.Decode.string
-                            Json.Decode.string
-                            Json.Decode.string
-                            Json.Decode.string
-                            Json.Decode.string
+                            (Json.Decode.index 1 Json.Decode.string)
+                            (Json.Decode.index 2 Json.Decode.string)
+                            (Json.Decode.index 3 Json.Decode.string)
+                            (Json.Decode.index 4 Json.Decode.string)
+                            (Json.Decode.index 5 Json.Decode.string)
                             |> Json.Decode.map UpdateFromFrontend
 
                     1 ->
                         Json.Decode.map3
                             Update_
-                            Json.Decode.string
-                            Json.Decode.string
-                            Json.Decode.string
+                            (Json.Decode.index 1 Json.Decode.string)
+                            (Json.Decode.index 2 Json.Decode.string)
+                            (Json.Decode.index 3 Json.Decode.string)
                             |> Json.Decode.map Update
 
                     0 ->
                         Json.Decode.map2
                             Init_
-                            Json.Decode.string
-                            Json.Decode.string
+                            (Json.Decode.index 1 Json.Decode.string)
+                            (Json.Decode.index 2 Json.Decode.string)
                             |> Json.Decode.map Init
 
                     _ ->
