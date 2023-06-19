@@ -79,10 +79,12 @@ type FrontendMsg
     = UrlClicked UrlRequest
     | UrlChanged Url
     | PressedEvent Int
+    | PressedResetSession
 
 
 type ToBackend
     = LoadSessionRequest String
+    | ResetSessionRequest
 
 
 type BackendMsg
@@ -93,3 +95,4 @@ type BackendMsg
 type ToFrontend
     = LoadSessionResponse DebugSession
     | SessionUpdate DataType
+    | ResetSession

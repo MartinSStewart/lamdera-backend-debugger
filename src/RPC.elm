@@ -49,12 +49,12 @@ decodeDataType =
             )
 
 
-broadcastToClients : SessionName -> DataType -> BackendModel -> Cmd BackendMsg
-broadcastToClients sessionName dataType model =
+broadcastToClients : SessionName -> ToFrontend -> BackendModel -> Cmd BackendMsg
+broadcastToClients sessionName toFrontend model =
     case Dict.get sessionName model.sessions of
         Just session ->
             Set.toList session.connections
-                |> List.map (\clientId -> Lamdera.sendToFrontend clientId (SessionUpdate dataType))
+                |> List.map (\clientId -> Lamdera.sendToFrontend clientId toFrontend)
                 |> Cmd.batch
 
         Nothing ->
@@ -149,7 +149,7 @@ updateSession dataType sessionName func model =
                 )
                 model.sessions
       }
-    , broadcastToClients sessionName dataType model
+    , broadcastToClients sessionName (SessionUpdate dataType) model
     )
 
 

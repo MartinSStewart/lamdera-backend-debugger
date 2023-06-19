@@ -5,6 +5,8 @@ import DebugApp
 import Dict
 import Html
 import Lamdera exposing (ClientId, SessionId)
+import List.Extra as List
+import RPC
 import Set
 import Types exposing (..)
 
@@ -29,6 +31,36 @@ app =
 init : ( BackendModel, Cmd BackendMsg )
 init =
     ( { sessions = Dict.empty }
+      --{ sessions =
+      --      Dict.fromList
+      --          [ ( "test"
+      --            , { initialModel = Just (Debug.toString { a = 5, b = "c" })
+      --              , history =
+      --                  [ BackendMsgEvent
+      --                      { msg =
+      --                          Debug.toString
+      --                              (BackendMsgEvent { msg = "A", newModel = Debug.toString { a = 4 } })
+      --                      , newModel = Debug.toString { a = 6, b = "c" }
+      --                      }
+      --                  , BackendMsgEvent
+      --                      { msg =
+      --                          Debug.toString
+      --                              (BackendMsgEvent { msg = "B", newModel = Debug.toString { a = 5 } })
+      --                      , newModel = Debug.toString { a = 6, b = "c" }
+      --                      }
+      --                  , BackendMsgEvent
+      --                      { msg =
+      --                          Debug.toString
+      --                              (BackendMsgEvent { msg = "C", newModel = Debug.toString { a = 6 } })
+      --                      , newModel = Debug.toString { a = 3, b = "c" }
+      --                      }
+      --                  ]
+      --                      |> Array.fromList
+      --              , connections = Set.empty
+      --              }
+      --            )
+      --          ]
+      --}
     , Cmd.none
     )
 
@@ -78,3 +110,29 @@ updateFromFrontend sessionId clientId msg model =
                     ( { model | sessions = Dict.insert sessionName session model.sessions }
                     , Lamdera.sendToFrontend clientId (LoadSessionResponse session)
                     )
+
+        ResetSessionRequest ->
+            case getSessionByClientId clientId model of
+                Just ( sessionName, session ) ->
+                    let
+                        model2 =
+                            { model
+                                | sessions =
+                                    Dict.insert
+                                        sessionName
+                                        { session | history = Array.empty, initialModel = Nothing }
+                                        model.sessions
+                            }
+                    in
+                    ( model2
+                    , RPC.broadcastToClients sessionName ResetSession model2
+                    )
+
+                Nothing ->
+                    ( model, Cmd.none )
+
+
+getSessionByClientId : ClientId -> BackendModel -> Maybe ( SessionName, DebugSession )
+getSessionByClientId clientId model =
+    Dict.toList model.sessions
+        |> List.find (\( sessionName, session ) -> Set.member clientId session.connections)
