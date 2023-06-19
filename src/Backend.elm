@@ -1,7 +1,6 @@
 module Backend exposing (..)
 
 import Array
-import DebugApp
 import Dict
 import Html
 import Lamdera exposing (ClientId, SessionId)
@@ -18,9 +17,7 @@ app :
     , subscriptions : BackendModel -> Sub BackendMsg
     }
 app =
-    DebugApp.backend
-        NoOpBackendMsg
-        "Blah"
+    Lamdera.backend
         { init = init
         , update = update
         , updateFromFrontend = updateFromFrontend
