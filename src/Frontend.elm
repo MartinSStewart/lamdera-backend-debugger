@@ -3,7 +3,7 @@ module Frontend exposing (..)
 import Array exposing (Array)
 import Browser exposing (UrlRequest(..))
 import Browser.Navigation as Nav
-import DebugParser.ElmValue exposing (ElmValue(..))
+import DebugParser.ElmValue exposing (ElmValue(..), ExpandableValue(..))
 import DebugToJson
 import Diff
 import Element exposing (Element)
@@ -194,7 +194,9 @@ prettyPrint d =
 loadedSessionView : LoadedData -> Element FrontendMsg
 loadedSessionView model =
     if Array.isEmpty model.history && model.initialModel == Nothing then
-        Element.el [ Element.centerX, Element.centerY, Element.Font.size 20 ] (Element.text "No debug data yet")
+        Element.el
+            [ Element.centerX, Element.centerY, Element.Font.size 20 ]
+            (Element.text "No debug data yet")
 
     else
         Element.row
@@ -222,7 +224,7 @@ loadedSessionView model =
                 [ case Array.get model.selected model.history of
                     Just event ->
                         Element.column
-                            []
+                            [ Element.Font.family [ Element.Font.monospace ], Element.spacing 4 ]
                             [ Element.el
                                 [ Element.Font.bold ]
                                 (case event of
@@ -232,7 +234,7 @@ loadedSessionView model =
                                     BackendMsgEvent _ ->
                                         Element.text "BackendMsg"
                                 )
-                            , treeView 0 (eventMsg event)
+                            , treeView (eventMsg event)
                             ]
 
                     Nothing ->
@@ -240,9 +242,12 @@ loadedSessionView model =
                 , case ( getModel (model.selected - 1) model, getModel model.selected model ) of
                     ( Just previousEvent, Just event ) ->
                         Element.column
-                            [ Element.width Element.fill ]
+                            [ Element.width Element.fill
+                            , Element.Font.family [ Element.Font.monospace ]
+                            , Element.spacing 4
+                            ]
                             [ Element.el [ Element.Font.bold ] (Element.text "New model")
-                            , treeView 0 event
+                            , treeViewDiff previousEvent event
                             ]
 
                     _ ->
@@ -251,63 +256,260 @@ loadedSessionView model =
             ]
 
 
-treeView : Int -> ElmValue -> Element msg
-treeView indentation value =
+newColor =
+    Element.Background.color (Element.rgb 0.7 1 0.7)
+
+
+oldColor =
+    Element.Background.color (Element.rgb 1 0.7 0.7)
+
+
+plainValueToString value =
+    case value of
+        DebugParser.ElmValue.ElmString string ->
+            "\"" ++ string ++ "\""
+
+        DebugParser.ElmValue.ElmChar char ->
+            "'" ++ String.fromChar char ++ "'"
+
+        DebugParser.ElmValue.ElmNumber float ->
+            String.fromFloat float
+
+        DebugParser.ElmValue.ElmBool bool ->
+            if bool then
+                "True"
+
+            else
+                "False"
+
+        DebugParser.ElmValue.ElmFunction ->
+            "<function>"
+
+        DebugParser.ElmValue.ElmInternals ->
+            "<internal>"
+
+        DebugParser.ElmValue.ElmUnit ->
+            "()"
+
+        DebugParser.ElmValue.ElmFile string ->
+            "<file named " ++ string ++ ">"
+
+        DebugParser.ElmValue.ElmBytes int ->
+            "<" ++ String.fromInt int ++ " bytes>"
+
+
+singleLineView : ElmValue -> String
+singleLineView value =
     case value of
         Plain plainValue ->
-            case plainValue of
-                DebugParser.ElmValue.ElmString string ->
-                    "\"" ++ string ++ "\"" |> Element.text
+            plainValueToString plainValue
 
-                DebugParser.ElmValue.ElmChar char ->
-                    "'" ++ String.fromChar char ++ "'" |> Element.text
+        Expandable bool expandableValue ->
+            case expandableValue of
+                ElmSequence sequenceType elmValues ->
+                    let
+                        ( startChar, endChar ) =
+                            sequenceStartEnd sequenceType
+                    in
+                    startChar ++ " ... " ++ endChar
 
-                DebugParser.ElmValue.ElmNumber float ->
-                    Element.text (String.fromFloat float)
+                ElmType variant elmValues ->
+                    variant ++ " " ++ String.join " " (List.map singleLineView elmValues)
 
-                DebugParser.ElmValue.ElmBool bool ->
-                    if bool then
-                        Element.text "True"
+                ElmRecord list ->
+                    "{ ... }"
+
+                ElmDict list ->
+                    "{{ ... }}"
+
+
+sequenceStartEnd sequenceType =
+    case sequenceType of
+        DebugParser.ElmValue.SeqSet ->
+            ( "{|", "|}" )
+
+        DebugParser.ElmValue.SeqList ->
+            ( "[", "]" )
+
+        DebugParser.ElmValue.SeqArray ->
+            ( "[|", "|]" )
+
+        DebugParser.ElmValue.SeqTuple ->
+            ( "(", ")" )
+
+
+treeViewDiff : ElmValue -> ElmValue -> Element msg
+treeViewDiff oldValue value =
+    case ( oldValue, value ) of
+        ( Plain oldPlainValue, Plain plainValue ) ->
+            if plainValue == oldPlainValue then
+                plainValueToString plainValue |> Element.text
+
+            else
+                Element.column
+                    []
+                    [ Element.el [ oldColor ] (treeView oldValue)
+                    , plainValueToString plainValue |> Element.text |> Element.el [ newColor ]
+                    ]
+
+        ( Expandable _ oldExpandableValue, Expandable _ expandableValue ) ->
+            case ( oldExpandableValue, expandableValue ) of
+                ( ElmSequence _ oldElmValues, ElmSequence sequenceType elmValues ) ->
+                    let
+                        ( startChar, endChar ) =
+                            sequenceStartEnd sequenceType
+                    in
+                    Element.column
+                        []
+                        [ Element.text startChar
+                        , Element.column
+                            [ Element.moveRight 16 ]
+                            (List.map treeView elmValues)
+                        , Element.text endChar
+                        ]
+
+                ( ElmType oldVariant oldElmValues, ElmType variant elmValues ) ->
+                    if oldVariant == variant then
+                        Element.column
+                            []
+                            [ Element.text variant
+                            , Element.column
+                                [ Element.moveRight 16 ]
+                                (List.map2 (\old new -> treeViewDiff old new) oldElmValues elmValues)
+                            ]
 
                     else
-                        Element.text "False"
+                        Element.column
+                            []
+                            [ Element.column
+                                [ oldColor ]
+                                [ Element.text oldVariant
+                                , Element.column
+                                    [ Element.moveRight 16 ]
+                                    (List.map treeView oldElmValues)
+                                ]
+                            , Element.column
+                                [ newColor ]
+                                [ Element.text variant
+                                , Element.column
+                                    [ Element.moveRight 16 ]
+                                    (List.map treeView elmValues)
+                                ]
+                            ]
 
-                DebugParser.ElmValue.ElmFunction ->
-                    Element.text "<function>"
+                ( ElmRecord oldList, ElmRecord list ) ->
+                    Element.column
+                        []
+                        [ Element.text "{"
+                        , Element.column
+                            [ Element.moveRight 16 ]
+                            (List.map2
+                                (\( _, oldElmValue ) ( fieldName, elmValue ) ->
+                                    Element.row
+                                        []
+                                        [ Element.el [ Element.alignTop ] (Element.text (fieldName ++ ": "))
+                                        , treeViewDiff oldElmValue elmValue
+                                        ]
+                                )
+                                oldList
+                                list
+                            )
+                        , Element.text "}"
+                        ]
 
-                DebugParser.ElmValue.ElmInternals ->
-                    Element.text "<internal>"
+                ( ElmDict oldList, ElmDict list ) ->
+                    Element.column
+                        []
+                        [ Element.text "{{"
+                        , Element.column
+                            [ Element.moveRight 16 ]
+                            (List.map
+                                (\( key, elmValue ) ->
+                                    Element.row [] [ treeView key, Element.text ": ", treeView elmValue ]
+                                )
+                                list
+                            )
+                        , Element.text "}}"
+                        ]
 
-                DebugParser.ElmValue.ElmUnit ->
-                    Element.text "()"
+                _ ->
+                    Element.text "Error, old and new types don't match"
 
-                DebugParser.ElmValue.ElmFile string ->
-                    "<file named " ++ string ++ ">" |> Element.text
+        _ ->
+            Element.text "Error, old and new types don't match"
 
-                DebugParser.ElmValue.ElmBytes int ->
-                    "<" ++ String.fromInt int ++ " bytes>" |> Element.text
+
+treeView : ElmValue -> Element msg
+treeView value =
+    case value of
+        Plain plainValue ->
+            plainValueToString plainValue |> Element.text
 
         Expandable bool expandableValue ->
             case expandableValue of
                 DebugParser.ElmValue.ElmSequence sequenceType elmValues ->
+                    let
+                        ( startChar, endChar ) =
+                            case sequenceType of
+                                DebugParser.ElmValue.SeqSet ->
+                                    ( "{|", "|}" )
+
+                                DebugParser.ElmValue.SeqList ->
+                                    ( "[", "]" )
+
+                                DebugParser.ElmValue.SeqArray ->
+                                    ( "[|", "|]" )
+
+                                DebugParser.ElmValue.SeqTuple ->
+                                    ( "(", ")" )
+                    in
                     Element.column
-                        [ Element.moveRight (toFloat indentation * 16) ]
-                        (List.map (treeView (indentation + 1)) elmValues)
+                        []
+                        [ Element.text startChar
+                        , Element.column
+                            [ Element.moveRight 16 ]
+                            (List.map treeView elmValues)
+                        , Element.text endChar
+                        ]
 
                 DebugParser.ElmValue.ElmType string elmValues ->
                     Element.column
-                        [ Element.moveRight (toFloat indentation * 16) ]
-                        (List.map (treeView (indentation + 1)) elmValues)
+                        []
+                        [ Element.text string
+                        , Element.column
+                            [ Element.moveRight 16 ]
+                            (List.map treeView elmValues)
+                        ]
 
                 DebugParser.ElmValue.ElmRecord list ->
                     Element.column
-                        [ Element.moveRight (toFloat indentation * 16) ]
-                        (List.map (\( _, elmValue ) -> treeView (indentation + 1) elmValue) list)
+                        []
+                        [ Element.text "{"
+                        , Element.column
+                            [ Element.moveRight 16 ]
+                            (List.map
+                                (\( fieldName, elmValue ) ->
+                                    Element.row [] [ Element.text (fieldName ++ ": "), treeView elmValue ]
+                                )
+                                list
+                            )
+                        , Element.text "}"
+                        ]
 
                 DebugParser.ElmValue.ElmDict list ->
                     Element.column
-                        [ Element.moveRight (toFloat indentation * 16) ]
-                        (List.map (\( _, elmValue ) -> treeView (indentation + 1) elmValue) list)
+                        []
+                        [ Element.text "{{"
+                        , Element.column
+                            [ Element.moveRight 16 ]
+                            (List.map
+                                (\( key, elmValue ) ->
+                                    Element.row [] [ treeView key, Element.text ": ", treeView elmValue ]
+                                )
+                                list
+                            )
+                        , Element.text "}}"
+                        ]
 
 
 diffView : String -> String -> Element msg
@@ -384,12 +586,12 @@ eventView selected index event =
         (case event of
             BackendMsgEvent { msg } ->
                 { onPress = Just (PressedEvent index)
-                , label = Element.text (String.fromInt index ++ ". ")
+                , label = Element.text (String.fromInt index ++ ". " ++ ellipsis (singleLineView msg))
                 }
 
             ToBackendEvent { msg } ->
                 { onPress = Just (PressedEvent index)
-                , label = Element.text (String.fromInt index ++ ". ")
+                , label = Element.text (String.fromInt index ++ ". " ++ ellipsis (singleLineView msg))
                 }
         )
 

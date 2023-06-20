@@ -47,7 +47,7 @@ init =
                             , newModel =
                                 Expandable True
                                     (ElmRecord
-                                        [ ( "a", Plain (ElmNumber 5) )
+                                        [ ( "a", Plain (ElmNumber 4) )
                                         , ( "b", Plain (ElmString "c") )
                                         ]
                                     )
@@ -57,7 +57,7 @@ init =
                             , newModel =
                                 Expandable True
                                     (ElmRecord
-                                        [ ( "a", Plain (ElmNumber 5) )
+                                        [ ( "a", Plain (ElmNumber 3) )
                                         , ( "b", Plain (ElmString "c") )
                                         ]
                                     )
