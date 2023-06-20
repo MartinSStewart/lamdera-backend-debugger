@@ -1,7 +1,8 @@
 module Backend exposing (..)
 
 import Array
-import Dict
+import AssocList as Dict
+import DebugParser.ElmValue exposing (ElmValue(..), ExpandableValue(..), PlainValue(..))
 import Html
 import Lamdera exposing (ClientId, SessionId)
 import List.Extra as List
@@ -27,37 +28,57 @@ app =
 
 init : ( BackendModel, Cmd BackendMsg )
 init =
-    ( { sessions = Dict.empty }
-      --{ sessions =
-      --      Dict.fromList
-      --          [ ( "test"
-      --            , { initialModel = Just (Debug.toString { a = 5, b = "c" })
-      --              , history =
-      --                  [ BackendMsgEvent
-      --                      { msg =
-      --                          Debug.toString
-      --                              (BackendMsgEvent { msg = "A", newModel = Debug.toString { a = 4 } })
-      --                      , newModel = Debug.toString { a = 6, b = "c" }
-      --                      }
-      --                  , BackendMsgEvent
-      --                      { msg =
-      --                          Debug.toString
-      --                              (BackendMsgEvent { msg = "B", newModel = Debug.toString { a = 5 } })
-      --                      , newModel = Debug.toString { a = 6, b = "c" }
-      --                      }
-      --                  , BackendMsgEvent
-      --                      { msg =
-      --                          Debug.toString
-      --                              (BackendMsgEvent { msg = "C", newModel = Debug.toString { a = 6 } })
-      --                      , newModel = Debug.toString { a = 3, b = "c" }
-      --                      }
-      --                  ]
-      --                      |> Array.fromList
-      --              , connections = Set.empty
-      --              }
-      --            )
-      --          ]
-      --}
+    ( --{ sessions = Dict.empty }
+      { sessions =
+            Dict.fromList
+                [ ( SessionName "test"
+                  , { initialModel =
+                        Just
+                            (Expandable True
+                                (ElmRecord
+                                    [ ( "a", Plain (ElmNumber 5) )
+                                    , ( "b", Plain (ElmString "c") )
+                                    ]
+                                )
+                            )
+                    , history =
+                        [ BackendMsgEvent
+                            { msg = Expandable True (ElmType "MyVariant" [ Plain (ElmNumber 5) ])
+                            , newModel =
+                                Expandable True
+                                    (ElmRecord
+                                        [ ( "a", Plain (ElmNumber 5) )
+                                        , ( "b", Plain (ElmString "c") )
+                                        ]
+                                    )
+                            }
+                        , BackendMsgEvent
+                            { msg = Expandable True (ElmType "MyVariant" [ Plain (ElmNumber 5) ])
+                            , newModel =
+                                Expandable True
+                                    (ElmRecord
+                                        [ ( "a", Plain (ElmNumber 5) )
+                                        , ( "b", Plain (ElmString "c") )
+                                        ]
+                                    )
+                            }
+                        , BackendMsgEvent
+                            { msg = Expandable True (ElmType "MyVariant" [ Plain (ElmNumber 5) ])
+                            , newModel =
+                                Expandable True
+                                    (ElmRecord
+                                        [ ( "a", Plain (ElmNumber 5) )
+                                        , ( "b", Plain (ElmString "c") )
+                                        ]
+                                    )
+                            }
+                        ]
+                            |> Array.fromList
+                    , connections = Set.empty
+                    }
+                  )
+                ]
+      }
     , Cmd.none
     )
 

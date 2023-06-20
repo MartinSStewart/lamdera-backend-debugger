@@ -1,7 +1,9 @@
 module RPC exposing (..)
 
 import Array
-import Dict
+import AssocList as Dict
+import DebugParser
+import DebugParser.ElmValue exposing (ElmValue)
 import Http
 import Json.Decode exposing (Decoder)
 import Json.Encode
@@ -10,7 +12,25 @@ import Lamdera.Wire3 as Wire3
 import LamderaRPC
 import Set
 import Task exposing (Task)
-import Types exposing (BackendModel, BackendMsg(..), DataType(..), DebugSession, Event(..), Init_, SessionName, ToFrontend(..), UpdateFromFrontend_, Update_)
+import Types exposing (BackendModel, BackendMsg(..), DataType(..), DebugSession, Event(..), Init_, SessionName(..), ToFrontend(..), UpdateFromFrontend_, Update_)
+
+
+decodeElmValue : Decoder ElmValue
+decodeElmValue =
+    Json.Decode.string
+        |> Json.Decode.andThen
+            (\text ->
+                case DebugParser.parse ("0: " ++ text) of
+                    Ok ok ->
+                        Json.Decode.succeed ok.value
+
+                    Err error ->
+                        Json.Decode.fail error
+            )
+
+
+decodeSessionName =
+    Json.Decode.map SessionName Json.Decode.string
 
 
 decodeDataType : Decoder DataType
@@ -22,9 +42,9 @@ decodeDataType =
                     2 ->
                         Json.Decode.map5
                             UpdateFromFrontend_
-                            (Json.Decode.index 1 Json.Decode.string)
-                            (Json.Decode.index 2 Json.Decode.string)
-                            (Json.Decode.index 3 Json.Decode.string)
+                            (Json.Decode.index 1 decodeSessionName)
+                            (Json.Decode.index 2 decodeElmValue)
+                            (Json.Decode.index 3 decodeElmValue)
                             (Json.Decode.index 4 Json.Decode.string)
                             (Json.Decode.index 5 Json.Decode.string)
                             |> Json.Decode.map UpdateFromFrontend
@@ -32,16 +52,16 @@ decodeDataType =
                     1 ->
                         Json.Decode.map3
                             Update_
-                            (Json.Decode.index 1 Json.Decode.string)
-                            (Json.Decode.index 2 Json.Decode.string)
-                            (Json.Decode.index 3 Json.Decode.string)
+                            (Json.Decode.index 1 decodeSessionName)
+                            (Json.Decode.index 2 decodeElmValue)
+                            (Json.Decode.index 3 decodeElmValue)
                             |> Json.Decode.map Update
 
                     0 ->
                         Json.Decode.map2
                             Init_
-                            (Json.Decode.index 1 Json.Decode.string)
-                            (Json.Decode.index 2 Json.Decode.string)
+                            (Json.Decode.index 1 decodeSessionName)
+                            (Json.Decode.index 2 decodeElmValue)
                             |> Json.Decode.map Init
 
                     _ ->

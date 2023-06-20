@@ -1,8 +1,10 @@
 module Types exposing (..)
 
 import Array exposing (Array)
+import AssocList
 import Browser exposing (UrlRequest)
 import Browser.Navigation exposing (Key)
+import DebugParser.ElmValue exposing (ElmValue)
 import Dict exposing (Dict)
 import Lamdera exposing (ClientId, SessionId)
 import Set exposing (Set)
@@ -22,19 +24,19 @@ type alias LoadingData =
 type alias LoadedData =
     { key : Key
     , sessionName : SessionName
-    , initialModel : Maybe String
+    , initialModel : Maybe ElmValue
     , history : Array Event
     , selected : Int
     }
 
 
 type alias BackendModel =
-    { sessions : Dict SessionName DebugSession
+    { sessions : AssocList.Dict SessionName DebugSession
     }
 
 
-type alias SessionName =
-    String
+type SessionName
+    = SessionName String
 
 
 type DataType
@@ -44,19 +46,19 @@ type DataType
 
 
 type alias Init_ =
-    { sessionName : SessionName, model : String }
+    { sessionName : SessionName, model : ElmValue }
 
 
 type alias Update_ =
-    { sessionName : SessionName, msg : String, newModel : String }
+    { sessionName : SessionName, msg : ElmValue, newModel : ElmValue }
 
 
 type alias UpdateFromFrontend_ =
-    { sessionName : SessionName, msg : String, newModel : String, sessionId : String, clientId : String }
+    { sessionName : SessionName, msg : ElmValue, newModel : ElmValue, sessionId : String, clientId : String }
 
 
 type alias DebugSession =
-    { initialModel : Maybe String
+    { initialModel : Maybe ElmValue
     , history : Array Event
     , connections : Set ClientId
     }
@@ -68,11 +70,11 @@ type Event
 
 
 type alias BackendMsgEvent_ =
-    { msg : String, newModel : String }
+    { msg : ElmValue, newModel : ElmValue }
 
 
 type alias ToBackendEvent_ =
-    { msg : String, newModel : String, sessionId : String, clientId : String }
+    { msg : ElmValue, newModel : ElmValue, sessionId : String, clientId : String }
 
 
 type FrontendMsg
@@ -83,7 +85,7 @@ type FrontendMsg
 
 
 type ToBackend
-    = LoadSessionRequest String
+    = LoadSessionRequest SessionName
     | ResetSessionRequest
 
 

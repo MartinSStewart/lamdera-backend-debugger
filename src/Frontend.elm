@@ -3,6 +3,7 @@ module Frontend exposing (..)
 import Array exposing (Array)
 import Browser exposing (UrlRequest(..))
 import Browser.Navigation as Nav
+import DebugParser.ElmValue exposing (ElmValue(..))
 import DebugToJson
 import Diff
 import Element exposing (Element)
@@ -39,9 +40,9 @@ init url key =
         Just sessionName ->
             ( LoadingSession
                 { key = key
-                , sessionName = sessionName
+                , sessionName = SessionName sessionName
                 }
-            , Lamdera.sendToBackend (LoadSessionRequest sessionName)
+            , Lamdera.sendToBackend (LoadSessionRequest (SessionName sessionName))
             )
 
         Nothing ->
@@ -231,14 +232,7 @@ loadedSessionView model =
                                     BackendMsgEvent _ ->
                                         Element.text "BackendMsg"
                                 )
-                            , Html.pre
-                                [ Html.Attributes.style "margin" "0"
-                                , Html.Attributes.style "line-height" "24px"
-                                ]
-                                [ prettyPrint (eventMsg event) |> Html.text
-                                ]
-                                |> Element.html
-                                |> Element.el []
+                            , treeView 0 (eventMsg event)
                             ]
 
                     Nothing ->
@@ -248,13 +242,72 @@ loadedSessionView model =
                         Element.column
                             [ Element.width Element.fill ]
                             [ Element.el [ Element.Font.bold ] (Element.text "New model")
-                            , diffView previousEvent event
+                            , treeView 0 event
                             ]
 
                     _ ->
                         Element.none
                 ]
             ]
+
+
+treeView : Int -> ElmValue -> Element msg
+treeView indentation value =
+    case value of
+        Plain plainValue ->
+            case plainValue of
+                DebugParser.ElmValue.ElmString string ->
+                    "\"" ++ string ++ "\"" |> Element.text
+
+                DebugParser.ElmValue.ElmChar char ->
+                    "'" ++ String.fromChar char ++ "'" |> Element.text
+
+                DebugParser.ElmValue.ElmNumber float ->
+                    Element.text (String.fromFloat float)
+
+                DebugParser.ElmValue.ElmBool bool ->
+                    if bool then
+                        Element.text "True"
+
+                    else
+                        Element.text "False"
+
+                DebugParser.ElmValue.ElmFunction ->
+                    Element.text "<function>"
+
+                DebugParser.ElmValue.ElmInternals ->
+                    Element.text "<internal>"
+
+                DebugParser.ElmValue.ElmUnit ->
+                    Element.text "()"
+
+                DebugParser.ElmValue.ElmFile string ->
+                    "<file named " ++ string ++ ">" |> Element.text
+
+                DebugParser.ElmValue.ElmBytes int ->
+                    "<" ++ String.fromInt int ++ " bytes>" |> Element.text
+
+        Expandable bool expandableValue ->
+            case expandableValue of
+                DebugParser.ElmValue.ElmSequence sequenceType elmValues ->
+                    Element.column
+                        [ Element.moveRight (toFloat indentation * 16) ]
+                        (List.map (treeView (indentation + 1)) elmValues)
+
+                DebugParser.ElmValue.ElmType string elmValues ->
+                    Element.column
+                        [ Element.moveRight (toFloat indentation * 16) ]
+                        (List.map (treeView (indentation + 1)) elmValues)
+
+                DebugParser.ElmValue.ElmRecord list ->
+                    Element.column
+                        [ Element.moveRight (toFloat indentation * 16) ]
+                        (List.map (\( _, elmValue ) -> treeView (indentation + 1) elmValue) list)
+
+                DebugParser.ElmValue.ElmDict list ->
+                    Element.column
+                        [ Element.moveRight (toFloat indentation * 16) ]
+                        (List.map (\( _, elmValue ) -> treeView (indentation + 1) elmValue) list)
 
 
 diffView : String -> String -> Element msg
@@ -287,8 +340,8 @@ diffView previousEvent event =
 
 getModel :
     Int
-    -> { a | initialModel : Maybe String, selected : Int, history : Array Event }
-    -> Maybe String
+    -> { a | initialModel : Maybe ElmValue, selected : Int, history : Array Event }
+    -> Maybe ElmValue
 getModel index model =
     if index == -1 then
         model.initialModel
@@ -297,7 +350,7 @@ getModel index model =
         Array.get index model.history |> Maybe.map eventNewModel
 
 
-eventMsg : Event -> String
+eventMsg : Event -> ElmValue
 eventMsg event =
     case event of
         BackendMsgEvent { msg } ->
@@ -307,14 +360,14 @@ eventMsg event =
             msg
 
 
-eventNewModel : Event -> String
+eventNewModel : Event -> ElmValue
 eventNewModel event =
     case event of
         BackendMsgEvent { newModel } ->
-            prettyPrint newModel
+            newModel
 
         ToBackendEvent { newModel } ->
-            prettyPrint newModel
+            newModel
 
 
 eventView : Int -> Int -> Event -> Element FrontendMsg
@@ -331,12 +384,12 @@ eventView selected index event =
         (case event of
             BackendMsgEvent { msg } ->
                 { onPress = Just (PressedEvent index)
-                , label = Element.text (String.fromInt index ++ ". " ++ ellipsis msg)
+                , label = Element.text (String.fromInt index ++ ". ")
                 }
 
             ToBackendEvent { msg } ->
                 { onPress = Just (PressedEvent index)
-                , label = Element.text (String.fromInt index ++ ". " ++ ellipsis msg)
+                , label = Element.text (String.fromInt index ++ ". ")
                 }
         )
 
