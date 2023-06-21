@@ -14,7 +14,6 @@ import Url exposing (Url)
 type FrontendModel
     = LoadingSession LoadingData
     | LoadedSession LoadedData
-    | HomePage { key : Key }
 
 
 type alias LoadingData =
@@ -82,6 +81,7 @@ type FrontendMsg
     | UrlChanged Url
     | PressedEvent Int
     | PressedResetSession
+    | GotRandomSessionName SessionName
 
 
 type ToBackend

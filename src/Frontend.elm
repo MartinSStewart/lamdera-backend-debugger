@@ -2,7 +2,7 @@ module Frontend exposing (..)
 
 import Array exposing (Array)
 import Browser exposing (UrlRequest(..))
-import Browser.Navigation as Nav
+import Browser.Navigation
 import DebugParser.ElmValue exposing (ElmValue(..), ExpandableValue(..))
 import DebugToJson
 import Diff
@@ -16,6 +16,8 @@ import Html
 import Html.Attributes
 import Json.Encode
 import Lamdera
+import Random
+import Sha256
 import SyntaxHighlight
 import Types exposing (..)
 import Url
@@ -34,7 +36,7 @@ app =
         }
 
 
-init : Url.Url -> Nav.Key -> ( FrontendModel, Cmd FrontendMsg )
+init : Url.Url -> Browser.Navigation.Key -> ( FrontendModel, Cmd FrontendMsg )
 init url key =
     case Url.Parser.parse Url.Parser.string url of
         Just sessionName ->
@@ -46,12 +48,20 @@ init url key =
             )
 
         Nothing ->
-            ( HomePage { key = key }
-            , Cmd.none
+            ( LoadingSession { key = key, sessionName = SessionName "" }
+            , Random.generate
+                GotRandomSessionName
+                (Random.map
+                    (\int -> String.fromInt int |> Sha256.sha224 |> String.left 16 |> SessionName)
+                    (Random.int
+                        -(2 ^ 53 - 1)
+                        (2 ^ 53 - 1)
+                    )
+                )
             )
 
 
-getNavKey : FrontendModel -> Nav.Key
+getNavKey : FrontendModel -> Browser.Navigation.Key
 getNavKey model =
     case model of
         LoadingSession loadingData ->
@@ -59,9 +69,6 @@ getNavKey model =
 
         LoadedSession loadedData ->
             loadedData.key
-
-        HomePage record ->
-            record.key
 
 
 update : FrontendMsg -> FrontendModel -> ( FrontendModel, Cmd FrontendMsg )
@@ -71,12 +78,12 @@ update msg model =
             case urlRequest of
                 Internal url ->
                     ( model
-                    , Nav.pushUrl (getNavKey model) (Url.toString url)
+                    , Browser.Navigation.pushUrl (getNavKey model) (Url.toString url)
                     )
 
                 External url ->
                     ( model
-                    , Nav.load url
+                    , Browser.Navigation.load url
                     )
 
         UrlChanged url ->
@@ -92,6 +99,24 @@ update msg model =
 
         PressedResetSession ->
             ( model, Lamdera.sendToBackend ResetSessionRequest )
+
+        GotRandomSessionName sessionName ->
+            case model of
+                LoadingSession loading ->
+                    ( LoadingSession { loading | sessionName = sessionName }
+                    , Cmd.batch
+                        [ Lamdera.sendToBackend (LoadSessionRequest sessionName)
+                        , Browser.Navigation.replaceUrl loading.key ("/" ++ sessionNameToString sessionName)
+                        ]
+                    )
+
+                _ ->
+                    ( model, Cmd.none )
+
+
+sessionNameToString : SessionName -> String
+sessionNameToString (SessionName sessionName) =
+    sessionName
 
 
 updateFromBackend : ToFrontend -> FrontendModel -> ( FrontendModel, Cmd FrontendMsg )
@@ -171,32 +196,43 @@ view model =
 
                 LoadedSession loaded ->
                     loadedSessionView loaded
-
-                HomePage homepage ->
-                    homepageView homepage
             )
         ]
     }
 
 
-{-| Pretty print output from Debug.toString to JSON
--}
-prettyPrint : String -> String
-prettyPrint d =
-    case DebugToJson.toJson d of
-        Ok val ->
-            Json.Encode.encode 2 val
-
-        Err _ ->
-            d
+link : String -> String -> Element msg
+link url text =
+    Element.newTabLink
+        [ Element.Font.color (Element.rgb 0.1 0.3 0.9) ]
+        { url = url, label = Element.text text }
 
 
 loadedSessionView : LoadedData -> Element FrontendMsg
 loadedSessionView model =
     if Array.isEmpty model.history && model.initialModel == Nothing then
-        Element.el
-            [ Element.centerX, Element.centerY, Element.Font.size 20 ]
-            (Element.text "No debug data yet")
+        Element.column
+            [ Element.spacing 8
+            , Element.centerX
+            , Element.centerY
+            , Element.width (Element.px 600)
+            , Element.Font.size 20
+            ]
+            [ Element.paragraph
+                []
+                [ Element.text "To get started copy "
+                , link (Env.domain ++ "/DebugApp.elm") "DebugApp.elm"
+                , Element.text " into your src folder (or "
+                , link (Env.domain ++ "/EffectDebugApp.elm") "EffectDebugApp.elm"
+                , Element.text " if you are using "
+                , link "https://github.com/lamdera/program-test" "lamdera/program-test"
+                , Element.text ")."
+                ]
+            , Element.paragraph [] [ Element.text "Then replace" ]
+            , code SyntaxHighlight.elm codeBefore
+            , Element.text "with"
+            , code SyntaxHighlight.elm (codeAfter model.sessionName)
+            ]
 
     else
         Element.row
@@ -605,35 +641,6 @@ ellipsis text =
         text
 
 
-homepageView : a -> Element msg
-homepageView model =
-    Element.column
-        [ Element.spacing 8
-        , Element.centerX
-        , Element.centerY
-        , Element.width (Element.px 600)
-        , Element.Font.size 20
-        ]
-        [ Element.paragraph
-            []
-            [ Element.text "To get started copy "
-            , Element.newTabLink
-                [ Element.Font.color (Element.rgb 0.1 0.3 0.9) ]
-                { url = Env.domain ++ "/DebugApp.elm", label = Element.text "this file" }
-            , Element.text " into your src folder as DebugApp.elm, then replace "
-            ]
-        , code SyntaxHighlight.elm codeBefore
-        , Element.text "with"
-        , code SyntaxHighlight.elm codeAfter
-        , Element.paragraph
-            []
-            [ Element.text "and finally navigate to "
-            ]
-        , code SyntaxHighlight.noLang (Env.domain ++ "/<name of your debug session>")
-        , Element.paragraph [] [ Element.text "to view the debug history." ]
-        ]
-
-
 code codeType text =
     case codeType text of
         Ok ok ->
@@ -719,11 +726,11 @@ codeBefore =
 """
 
 
-codeAfter : String
-codeAfter =
+codeAfter : SessionName -> String
+codeAfter sessionName =
     """DebugApp.backend
     NoOpBackendMsg
-    "<name of your debug session>"
+    \"""" ++ sessionNameToString sessionName ++ """"
     { init = init
     , update = update
     , updateFromFrontend = updateFromFrontend
