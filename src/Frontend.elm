@@ -341,7 +341,7 @@ singleLineView value =
         Plain plainValue ->
             plainValueToString plainValue
 
-        Expandable bool expandableValue ->
+        Expandable expandableValue ->
             case expandableValue of
                 ElmSequence sequenceType elmValues ->
                     let
@@ -387,7 +387,7 @@ isSingleLine elmValue =
         Plain _ ->
             True
 
-        Expandable _ expandable ->
+        Expandable expandable ->
             case expandable of
                 ElmSequence _ elmValues ->
                     List.isEmpty elmValues
@@ -416,7 +416,7 @@ treeViewDiff oldValue value =
                     , plainValueToString plainValue |> Element.text |> Element.el [ newColor ]
                     ]
 
-        ( Expandable _ oldExpandableValue, Expandable _ expandableValue ) ->
+        ( Expandable oldExpandableValue, Expandable expandableValue ) ->
             case ( oldExpandableValue, expandableValue ) of
                 ( ElmSequence _ oldElmValues, ElmSequence sequenceType elmValues ) ->
                     if List.isEmpty oldElmValues && List.isEmpty elmValues then
@@ -591,7 +591,7 @@ treeView value =
         Plain plainValue ->
             plainValueToString plainValue |> Element.text
 
-        Expandable bool expandableValue ->
+        Expandable expandableValue ->
             case expandableValue of
                 DebugParser.ElmValue.ElmSequence sequenceType elmValues ->
                     if List.isEmpty elmValues then

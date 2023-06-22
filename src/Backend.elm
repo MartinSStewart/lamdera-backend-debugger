@@ -34,15 +34,15 @@ init =
                 [ ( SessionName "test"
                   , { initialModel =
                         Just
-                            (Expandable True
+                            (Expandable
                                 (ElmRecord
                                     [ ( "a", Plain (ElmNumber 5) )
                                     , ( "blahblah"
-                                      , Expandable True
+                                      , Expandable
                                             (ElmRecord
                                                 [ ( "a", Plain (ElmNumber 5) )
                                                 , ( "b"
-                                                  , Expandable True
+                                                  , Expandable
                                                         (ElmSequence SeqList
                                                             [ Plain (ElmNumber 4)
                                                             , Plain (ElmNumber 3)
@@ -54,7 +54,7 @@ init =
                                             )
                                       )
                                     , ( "abc123"
-                                      , Expandable True
+                                      , Expandable
                                             (ElmDict
                                                 [ ( Plain (ElmString "asdf123")
                                                   , Plain (ElmNumber 4)
@@ -71,15 +71,15 @@ init =
                     , history =
                         [ BackendMsgEvent
                             { msg =
-                                Expandable True
+                                Expandable
                                     (ElmRecord
                                         [ ( "a", Plain (ElmNumber 4) )
                                         , ( "blahblah"
-                                          , Expandable True
+                                          , Expandable
                                                 (ElmRecord
                                                     [ ( "a", Plain (ElmNumber 5) )
                                                     , ( "b"
-                                                      , Expandable True
+                                                      , Expandable
                                                             (ElmSequence SeqList
                                                                 [ Plain (ElmNumber 4)
                                                                 , Plain (ElmNumber 4)
@@ -90,7 +90,7 @@ init =
                                                 )
                                           )
                                         , ( "abc123"
-                                          , Expandable True
+                                          , Expandable
                                                 (ElmDict
                                                     [ ( Plain (ElmString "asdf123")
                                                       , Plain (ElmNumber 3)
@@ -104,15 +104,15 @@ init =
                                         ]
                                     )
                             , newModel =
-                                Expandable True
+                                Expandable
                                     (ElmRecord
                                         [ ( "a", Plain (ElmNumber 4) )
                                         , ( "blahblah"
-                                          , Expandable True
+                                          , Expandable
                                                 (ElmRecord
                                                     [ ( "a", Plain (ElmNumber 5) )
                                                     , ( "b"
-                                                      , Expandable True
+                                                      , Expandable
                                                             (ElmSequence SeqList
                                                                 [ Plain (ElmNumber 4)
                                                                 , Plain (ElmNumber 4)
@@ -123,7 +123,7 @@ init =
                                                 )
                                           )
                                         , ( "abc123"
-                                          , Expandable True
+                                          , Expandable
                                                 (ElmDict
                                                     [ ( Plain (ElmString "asdf123")
                                                       , Plain (ElmNumber 3)

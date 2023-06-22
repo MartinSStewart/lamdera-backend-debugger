@@ -157,7 +157,7 @@ parseList =
         }
         |> P.map
             (\listVal ->
-                Expandable False <| ElmSequence SeqList listVal
+                Expandable <| ElmSequence SeqList listVal
             )
 
 
@@ -173,7 +173,7 @@ parseArray =
         }
         |> P.map
             (\listVal ->
-                Expandable False <| ElmSequence SeqArray listVal
+                Expandable <| ElmSequence SeqArray listVal
             )
 
 
@@ -189,7 +189,7 @@ parseSet =
         }
         |> P.map
             (\listVal ->
-                Expandable False <| ElmSequence SeqSet listVal
+                Expandable <| ElmSequence SeqSet listVal
             )
 
 
@@ -361,7 +361,7 @@ parseRecord =
         }
         |> P.map
             (\listVal ->
-                Expandable False <| ElmRecord listVal
+                Expandable <| ElmRecord listVal
             )
 
 
@@ -398,7 +398,7 @@ parseCustomTypeWithoutValue =
 
                 _ ->
                     --NOTE: This is actually not expandable at all. Maybe a tip for a refactoring it later
-                    Expandable False <| ElmType name []
+                    Expandable <| ElmType name []
         )
         |= parseTypeName
 
@@ -424,7 +424,7 @@ parseCustomType =
                     _ ->
                         P.succeed
                             (\list ->
-                                Expandable False <| ElmType name (List.reverse list)
+                                Expandable <| ElmType name (List.reverse list)
                             )
                             |= P.loop [] typeHelp
             )
@@ -469,11 +469,11 @@ parseValueWithParenthesis =
                                                     |= P.lazy (\_ -> parseValue)
                                                     |> P.map
                                                         (\rdValue ->
-                                                            Expandable False <| ElmSequence SeqTuple [ fstValue, sndValue, rdValue ]
+                                                            Expandable <| ElmSequence SeqTuple [ fstValue, sndValue, rdValue ]
                                                         )
                                                 , -- ("x", "y")
                                                   P.succeed
-                                                    (Expandable False <| ElmSequence SeqTuple [ fstValue, sndValue ])
+                                                    (Expandable <| ElmSequence SeqTuple [ fstValue, sndValue ])
                                                 ]
                                     )
                             , P.succeed fstValue
@@ -513,7 +513,7 @@ parseDict =
         }
         |> P.map
             (\listVal ->
-                Expandable False <| ElmDict listVal
+                Expandable <| ElmDict listVal
             )
 
 

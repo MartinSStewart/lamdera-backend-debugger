@@ -1,8 +1,8 @@
-module DebugParser.ElmValue exposing (ElmValue(..), ExpandableValue(..), PlainValue(..), SequenceType(..), toggle, hasNestedValues)
+module DebugParser.ElmValue exposing (ElmValue(..), ExpandableValue(..), PlainValue(..), SequenceType(..), hasNestedValues)
 
 {-|
 
-@docs ElmValue, ExpandableValue, PlainValue, SequenceType, toggle, hasNestedValues
+@docs ElmValue, ExpandableValue, PlainValue, SequenceType, hasNestedValues
 
 -}
 
@@ -18,7 +18,7 @@ it later on large models is really costly. This might change in the upcoming ver
 -}
 type ElmValue
     = Plain PlainValue
-    | Expandable Bool ExpandableValue
+    | Expandable ExpandableValue
 
 
 {-| Plain values
@@ -62,7 +62,7 @@ type SequenceType
 hasNestedValues : ElmValue -> Bool
 hasNestedValues value =
     case value of
-        Expandable _ expandableValue ->
+        Expandable expandableValue ->
             case expandableValue of
                 ElmSequence _ values ->
                     not <| List.isEmpty values
@@ -78,20 +78,3 @@ hasNestedValues value =
 
         _ ->
             False
-
-
-{-| Toggle isExpanded flag for `ExpandableValue`
--}
-toggle : ElmValue -> ElmValue
-toggle value =
-    case value of
-        Expandable isExpanded expandableValue ->
-            case expandableValue of
-                ElmType _ [] ->
-                    value
-
-                _ ->
-                    Expandable (not isExpanded) expandableValue
-
-        _ ->
-            value
