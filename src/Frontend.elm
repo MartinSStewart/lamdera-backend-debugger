@@ -382,7 +382,7 @@ singleLineView value =
                     startChar ++ " ... " ++ endChar |> Element.text
 
                 ElmType variant elmValues ->
-                    Element.row [] [ variantText variant, Element.text " ", Element.row [] (List.map singleLineView elmValues) ]
+                    Element.row [ Element.spacing 10 ] (variantText variant :: List.map singleLineView elmValues)
 
                 ElmRecord list ->
                     Element.text "{ ... }"
