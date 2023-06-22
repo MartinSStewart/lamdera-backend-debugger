@@ -381,13 +381,25 @@ indexedMap2 func listA listB =
         |> List.indexedMap (\index ( a, b ) -> func index a b)
 
 
-rowOrColumn elmValue rowAttr columnAttr =
+isSingleLine : ElmValue -> Bool
+isSingleLine elmValue =
     case elmValue of
         Plain _ ->
-            Element.row rowAttr
+            True
 
-        Expandable _ _ ->
-            Element.column columnAttr
+        Expandable _ expandable ->
+            case expandable of
+                ElmSequence _ elmValues ->
+                    List.isEmpty elmValues
+
+                ElmType _ elmValues ->
+                    List.isEmpty elmValues
+
+                ElmRecord list ->
+                    False
+
+                ElmDict dict ->
+                    List.isEmpty dict
 
 
 treeViewDiff : ElmValue -> ElmValue -> Element msg
@@ -473,14 +485,14 @@ treeViewDiff oldValue value =
                             ( [ (Plain _) as oldPlain ], [ (Plain _) as plain ] ) ->
                                 Element.row
                                     []
-                                    [ Element.el [ Element.alignTop ] (Element.text variant)
+                                    [ Element.el [ Element.alignTop ] (Element.text (variant ++ " "))
                                     , treeViewDiff oldPlain plain
                                     ]
 
                             _ ->
                                 Element.column
                                     []
-                                    [ Element.text variant
+                                    [ Element.text (variant ++ " ")
                                     , Element.column
                                         [ Element.moveRight 16 ]
                                         (List.map2 treeViewDiff oldElmValues elmValues)
@@ -498,20 +510,19 @@ treeViewDiff oldValue value =
                         []
                         (List.map2
                             (\( _, oldElmValue ) ( fieldName, elmValue ) ->
-                                case elmValue of
-                                    Plain _ ->
-                                        Element.row []
-                                            [ Element.el [ Element.alignTop ] (Element.text (fieldName ++ ": "))
-                                            , treeViewDiff oldElmValue elmValue
-                                            ]
+                                if isSingleLine elmValue then
+                                    Element.row []
+                                        [ Element.el [ Element.alignTop ] (Element.text (fieldName ++ ": "))
+                                        , treeViewDiff oldElmValue elmValue
+                                        ]
 
-                                    Expandable _ _ ->
-                                        Element.column []
-                                            [ Element.text (fieldName ++ ": ")
-                                            , Element.el
-                                                [ Element.moveRight 16 ]
-                                                (treeViewDiff oldElmValue elmValue)
-                                            ]
+                                else
+                                    Element.column []
+                                        [ Element.text (fieldName ++ ": ")
+                                        , Element.el
+                                            [ Element.moveRight 16 ]
+                                            (treeViewDiff oldElmValue elmValue)
+                                        ]
                             )
                             oldRecord
                             record
@@ -528,32 +539,26 @@ treeViewDiff oldValue value =
                         merge =
                             AssocList.merge
                                 (\key old state ->
-                                    rowOrColumn
-                                        old
+                                    Element.column
                                         [ oldColor ]
-                                        [ oldColor, Element.moveRight 16 ]
-                                        [ Element.row [ Element.alignTop ] [ treeView key, Element.text "; " ]
-                                        , treeView old
+                                        [ Element.row [] [ treeView key, Element.text "; " ]
+                                        , Element.el [ Element.moveRight 16 ] (treeView old)
                                         ]
                                         :: state
                                 )
                                 (\key old new state ->
-                                    rowOrColumn
-                                        new
+                                    Element.column
                                         []
-                                        [ Element.moveRight 16 ]
-                                        [ Element.row [ Element.alignTop ] [ treeView key, Element.text "; " ]
-                                        , treeViewDiff old new
+                                        [ Element.row [] [ treeView key, Element.text "; " ]
+                                        , Element.el [ Element.moveRight 16 ] (treeViewDiff old new)
                                         ]
                                         :: state
                                 )
                                 (\key new state ->
-                                    rowOrColumn
-                                        new
+                                    Element.column
                                         [ newColor ]
-                                        [ newColor, Element.moveRight 16 ]
-                                        [ Element.row [ Element.alignTop ] [ treeView key, Element.text "; " ]
-                                        , treeView new
+                                        [ Element.row [] [ treeView key, Element.text "; " ]
+                                        , Element.el [ Element.moveRight 16 ] (treeView new)
                                         ]
                                         :: state
                                 )
@@ -619,14 +624,14 @@ treeView value =
                     case elmValues of
                         [ Plain plain ] ->
                             Element.row []
-                                [ Element.el [ Element.alignTop ] (Element.text variant)
+                                [ Element.el [ Element.alignTop ] (Element.text (variant ++ " "))
                                 , plainValueToString plain |> Element.text
                                 ]
 
                         _ ->
                             Element.column
                                 []
-                                [ Element.text variant
+                                [ Element.text (variant ++ " ")
                                 , Element.column [ Element.moveRight 16 ] (List.map treeView elmValues)
                                 ]
 
@@ -658,12 +663,10 @@ treeView value =
                         []
                         (List.map
                             (\( key, value2 ) ->
-                                rowOrColumn
-                                    value2
+                                Element.column
                                     []
-                                    [ Element.moveRight 16 ]
                                     [ Element.row [ Element.alignTop ] [ treeView key, Element.text "; " ]
-                                    , treeView value2
+                                    , Element.el [ Element.moveRight 16 ] (treeView value2)
                                     ]
                             )
                             dict
