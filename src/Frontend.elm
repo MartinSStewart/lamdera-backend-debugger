@@ -212,7 +212,7 @@ link url text =
 
 eventIsHidden : Set String -> ElmValue -> Bool
 eventIsHidden hiddenVariants elmValue =
-    case Debug.log "a" elmValue of
+    case elmValue of
         Plain _ ->
             False
 
