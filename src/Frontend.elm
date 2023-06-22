@@ -287,6 +287,16 @@ loadedSessionView model =
                             , treeViewDiff previousEvent event
                             ]
 
+                    ( Nothing, Just event ) ->
+                        Element.column
+                            [ Element.width Element.fill
+                            , Element.Font.family [ Element.Font.monospace ]
+                            , Element.spacing 4
+                            ]
+                            [ Element.el [ Element.Font.bold ] (Element.text "New model (initial model missing, no diff available)")
+                            , treeView event
+                            ]
+
                     _ ->
                         Element.none
                 ]
