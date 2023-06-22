@@ -495,7 +495,7 @@ treeViewDiff oldValue value =
                                         []
                                         [ Element.text variant
                                         , Element.el
-                                            [ Element.moveRight 16 ]
+                                            [ tabAmount ]
                                             (treeViewDiff oldSingle single)
                                         ]
 
@@ -504,7 +504,7 @@ treeViewDiff oldValue value =
                                     []
                                     [ Element.text variant
                                     , Element.column
-                                        [ Element.moveRight 16 ]
+                                        [ tabAmount ]
                                         (List.map2 treeViewDiff oldElmValues elmValues)
                                     ]
 
@@ -530,7 +530,7 @@ treeViewDiff oldValue value =
                                     Element.column []
                                         [ Element.text (fieldName ++ ": ")
                                         , Element.el
-                                            [ Element.moveRight 16 ]
+                                            [ tabAmount ]
                                             (treeViewDiff oldElmValue elmValue)
                                         ]
                             )
@@ -556,7 +556,7 @@ treeViewDiff oldValue value =
                                         Element.column
                                             [ oldColor ]
                                             [ Element.row [] [ treeView key, Element.text "; " ]
-                                            , Element.el [ Element.moveRight 16 ] (treeView old)
+                                            , Element.el [ tabAmount ] (treeView old)
                                             ]
                                             :: state
                                     )
@@ -564,7 +564,7 @@ treeViewDiff oldValue value =
                                         Element.column
                                             []
                                             [ Element.row [] [ treeView key, Element.text "; " ]
-                                            , Element.el [ Element.moveRight 16 ] (treeViewDiff old new)
+                                            , Element.el [ tabAmount ] (treeViewDiff old new)
                                             ]
                                             :: state
                                     )
@@ -572,7 +572,7 @@ treeViewDiff oldValue value =
                                         Element.column
                                             [ newColor ]
                                             [ Element.row [] [ treeView key, Element.text "; " ]
-                                            , Element.el [ Element.moveRight 16 ] (treeView new)
+                                            , Element.el [ tabAmount ] (treeView new)
                                             ]
                                             :: state
                                     )
@@ -587,6 +587,10 @@ treeViewDiff oldValue value =
 
         _ ->
             Element.text "Error, old and new types don't match"
+
+
+tabAmount =
+    Element.moveRight 24
 
 
 treeView : ElmValue -> Element msg
@@ -647,14 +651,14 @@ treeView value =
                                 Element.column
                                     []
                                     [ Element.text variant
-                                    , Element.column [ Element.moveRight 16 ] (List.map treeView elmValues)
+                                    , Element.column [ tabAmount ] (List.map treeView elmValues)
                                     ]
 
                         _ ->
                             Element.column
                                 []
                                 [ Element.text variant
-                                , Element.column [ Element.moveRight 16 ] (List.map treeView elmValues)
+                                , Element.column [ tabAmount ] (List.map treeView elmValues)
                                 ]
 
                 DebugParser.ElmValue.ElmRecord fields ->
@@ -673,7 +677,7 @@ treeView value =
                                     Element.column
                                         []
                                         [ Element.text (fieldName ++ ": ")
-                                        , Element.el [ Element.moveRight 16 ] (treeView elmValue)
+                                        , Element.el [ tabAmount ] (treeView elmValue)
                                         ]
                             )
                             fields
@@ -691,7 +695,7 @@ treeView value =
                                     Element.column
                                         []
                                         [ Element.row [ Element.alignTop ] [ treeView key, Element.text "; " ]
-                                        , Element.el [ Element.moveRight 16 ] (treeView value2)
+                                        , Element.el [ tabAmount ] (treeView value2)
                                         ]
                                 )
                                 dict
