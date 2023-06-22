@@ -279,7 +279,7 @@ loadedSessionView model =
         Element.row
             [ Element.width Element.fill, Element.height Element.fill, Element.padding 8 ]
             [ Element.column
-                [ Element.alignTop, Element.spacing 8, Element.width Element.fill ]
+                [ Element.alignTop, Element.spacing 8, Element.width (Element.px 380) ]
                 [ Element.row
                     [ Element.spacing 4, Element.width Element.fill ]
                     [ Element.Input.button
@@ -302,7 +302,7 @@ loadedSessionView model =
                         }
                     ]
                 , Element.column
-                    [ Element.Background.color (Element.rgb 0.9 0.9 0.9) ]
+                    [ Element.Background.color (Element.rgb 0.9 0.9 0.9), Element.width Element.fill ]
                     (List.indexedMap Tuple.pair (Array.toList model.history)
                         |> List.filterMap
                             (\( index, event ) ->
@@ -444,7 +444,7 @@ singleLineView value =
                     startChar ++ " ... " ++ endChar |> Element.text
 
                 ElmType variant elmValues ->
-                    Element.row [ Element.spacing 10 ] (variantText variant :: List.map singleLineView elmValues)
+                    Element.row [ Element.spacing 8 ] (variantText variant :: List.map singleLineView elmValues)
 
                 ElmRecord list ->
                     Element.text "{ ... }"
@@ -678,8 +678,9 @@ treeViewDiff oldValue value =
             Element.text "Error, old and new types don't match"
 
 
+tabAmount : Element.Attribute msg
 tabAmount =
-    Element.moveRight 24
+    Element.paddingEach { left = 24, right = 0, top = 0, bottom = 0 }
 
 
 treeView : ElmValue -> Element msg
@@ -828,10 +829,10 @@ eventView : Int -> Int -> Event -> Element FrontendMsg
 eventView selected index event =
     Element.Input.button
         ([ Element.paddingXY 4 0
-         , Element.width (Element.px 380)
          , Element.height (Element.px 28)
          , Element.Font.size 14
          , Element.clip
+         , Element.width Element.fill
          ]
             ++ (if selected == index then
                     [ Element.Background.color (Element.rgb 0.7 0.9 0.7) ]
