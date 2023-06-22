@@ -658,20 +658,19 @@ treeView value =
                         []
                         (List.map
                             (\( fieldName, elmValue ) ->
-                                case elmValue of
-                                    Plain _ ->
-                                        Element.row
-                                            []
-                                            [ Element.el [ Element.alignTop ] (Element.text (fieldName ++ ": "))
-                                            , treeView elmValue
-                                            ]
+                                if isSingleLine elmValue then
+                                    Element.row
+                                        []
+                                        [ Element.el [ Element.alignTop ] (Element.text (fieldName ++ ": "))
+                                        , treeView elmValue
+                                        ]
 
-                                    Expandable _ _ ->
-                                        Element.column
-                                            []
-                                            [ Element.text (fieldName ++ ": ")
-                                            , Element.el [ Element.moveRight 16 ] (treeView elmValue)
-                                            ]
+                                else
+                                    Element.column
+                                        []
+                                        [ Element.text (fieldName ++ ": ")
+                                        , Element.el [ Element.moveRight 16 ] (treeView elmValue)
+                                        ]
                             )
                             fields
                         )
