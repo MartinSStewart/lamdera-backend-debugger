@@ -304,48 +304,69 @@ loadedSessionView model =
 
 
 newColor =
-    Element.Background.color (Element.rgb 0.7 1 0.7)
+    Element.Background.color (Element.rgb 0.8 1 0.8)
 
 
 oldColor =
-    Element.Background.color (Element.rgb 1 0.7 0.7)
+    Element.Background.color (Element.rgb 1 0.8 0.8)
 
 
+numberText number =
+    Element.el [ Element.Font.color (Element.rgb 0.6 0.3 0.4) ] (Element.text (String.fromFloat number))
+
+
+stringText text =
+    Element.el [ Element.Font.color (Element.rgb 0.2 0.5 0.2) ] (Element.text ("\"" ++ text ++ "\""))
+
+
+charText char =
+    Element.el [ Element.Font.color (Element.rgb 0.2 0.4 0.2) ] (Element.text ("'" ++ String.fromChar char ++ "'"))
+
+
+emptyDict =
+    Element.el [ Element.Font.color (Element.rgb 0.4 0.4 0.4) ] (Element.text "<Empty dict>")
+
+
+variantText variant =
+    Element.el [ Element.Font.color (Element.rgb 0.4 0.3 0.8) ] (Element.text variant)
+
+
+plainValueToString : DebugParser.ElmValue.PlainValue -> Element msg
 plainValueToString value =
     case value of
         DebugParser.ElmValue.ElmString string ->
-            "\"" ++ string ++ "\""
+            stringText string
 
         DebugParser.ElmValue.ElmChar char ->
-            "'" ++ String.fromChar char ++ "'"
+            charText char
 
         DebugParser.ElmValue.ElmNumber float ->
-            String.fromFloat float
+            numberText float
 
         DebugParser.ElmValue.ElmBool bool ->
             if bool then
-                "True"
+                Element.text "True"
 
             else
-                "False"
+                Element.text "False"
 
         DebugParser.ElmValue.ElmFunction ->
-            "<function>"
+            Element.text "<function>"
 
         DebugParser.ElmValue.ElmInternals ->
-            "<internal>"
+            Element.text "<internal>"
 
         DebugParser.ElmValue.ElmUnit ->
-            "()"
+            Element.text "()"
 
         DebugParser.ElmValue.ElmFile string ->
-            "<file named " ++ string ++ ">"
+            Element.text ("<file named " ++ string ++ ">")
 
         DebugParser.ElmValue.ElmBytes int ->
-            "<" ++ String.fromInt int ++ " bytes>"
+            Element.text ("<" ++ String.fromInt int ++ " bytes>")
 
 
-singleLineView : ElmValue -> String
+singleLineView : ElmValue -> Element msg
 singleLineView value =
     case value of
         Plain plainValue ->
@@ -358,16 +379,16 @@ singleLineView value =
                         ( startChar, endChar ) =
                             sequenceStartEnd sequenceType
                     in
-                    startChar ++ " ... " ++ endChar
+                    startChar ++ " ... " ++ endChar |> Element.text
 
                 ElmType variant elmValues ->
-                    variant ++ " " ++ String.join " " (List.map singleLineView elmValues)
+                    Element.row [] [ variantText variant, Element.text " ", Element.row [] (List.map singleLineView elmValues) ]
 
                 ElmRecord list ->
-                    "{ ... }"
+                    Element.text "{ ... }"
 
                 ElmDict list ->
-                    "{{ ... }}"
+                    Element.text "{{ ... }}"
 
 
 sequenceStartEnd sequenceType =
@@ -417,13 +438,13 @@ treeViewDiff oldValue value =
     case ( oldValue, value ) of
         ( Plain oldPlainValue, Plain plainValue ) ->
             if plainValue == oldPlainValue then
-                plainValueToString plainValue |> Element.text
+                plainValueToString plainValue
 
             else
                 Element.column
                     []
-                    [ plainValueToString oldPlainValue |> Element.text |> Element.el [ oldColor ]
-                    , plainValueToString plainValue |> Element.text |> Element.el [ newColor ]
+                    [ plainValueToString oldPlainValue |> Element.el [ oldColor ]
+                    , plainValueToString plainValue |> Element.el [ newColor ]
                     ]
 
         ( Expandable oldExpandableValue, Expandable expandableValue ) ->
@@ -496,14 +517,15 @@ treeViewDiff oldValue value =
                                 if isSingleLine single then
                                     Element.row
                                         []
-                                        [ Element.el [ Element.alignTop ] (Element.text (variant ++ " "))
+                                        [ Element.el [ Element.alignTop ] (variantText variant)
+                                        , Element.text " "
                                         , treeViewDiff oldSingle single
                                         ]
 
                                 else
                                     Element.column
                                         []
-                                        [ Element.text variant
+                                        [ variantText variant
                                         , Element.el
                                             [ tabAmount ]
                                             (treeViewDiff oldSingle single)
@@ -512,7 +534,7 @@ treeViewDiff oldValue value =
                             _ ->
                                 Element.column
                                     []
-                                    [ Element.text variant
+                                    [ variantText variant
                                     , Element.column
                                         [ tabAmount ]
                                         (List.map2 treeViewDiff oldElmValues elmValues)
@@ -550,7 +572,7 @@ treeViewDiff oldValue value =
 
                 ( ElmDict oldDict, ElmDict dict ) ->
                     if List.isEmpty oldDict && List.isEmpty dict then
-                        Element.text "<Empty dict>"
+                        emptyDict
 
                     else
                         let
@@ -607,7 +629,7 @@ treeView : ElmValue -> Element msg
 treeView value =
     case value of
         Plain plainValue ->
-            plainValueToString plainValue |> Element.text
+            plainValueToString plainValue
 
         Expandable expandableValue ->
             case expandableValue of
@@ -653,21 +675,22 @@ treeView value =
                         [ single ] ->
                             if isSingleLine single then
                                 Element.row []
-                                    [ Element.el [ Element.alignTop ] (Element.text (variant ++ " "))
+                                    [ Element.el [ Element.alignTop ] (variantText variant)
+                                    , Element.text " "
                                     , treeView single
                                     ]
 
                             else
                                 Element.column
                                     []
-                                    [ Element.text variant
+                                    [ variantText variant
                                     , Element.column [ tabAmount ] (List.map treeView elmValues)
                                     ]
 
                         _ ->
                             Element.column
                                 []
-                                [ Element.text variant
+                                [ variantText variant
                                 , Element.column [ tabAmount ] (List.map treeView elmValues)
                                 ]
 
@@ -695,7 +718,7 @@ treeView value =
 
                 DebugParser.ElmValue.ElmDict dict ->
                     if List.isEmpty dict then
-                        Element.text "<Empty dict>"
+                        emptyDict
 
                     else
                         Element.column
@@ -747,7 +770,11 @@ eventNewModel event =
 eventView : Int -> Int -> Event -> Element FrontendMsg
 eventView selected index event =
     Element.Input.button
-        ([ Element.padding 4, Element.width (Element.px 380) ]
+        ([ Element.paddingXY 4 0
+         , Element.width (Element.px 380)
+         , Element.height (Element.px 28)
+         , Element.clip
+         ]
             ++ (if selected == index then
                     [ Element.Background.color (Element.rgb 0.7 0.9 0.7) ]
 
@@ -758,12 +785,12 @@ eventView selected index event =
         (case event of
             BackendMsgEvent { msg } ->
                 { onPress = Just (PressedEvent index)
-                , label = Element.text (String.fromInt index ++ ". " ++ ellipsis (singleLineView msg))
+                , label = Element.row [] [ Element.text (String.fromInt index ++ ". "), singleLineView msg ]
                 }
 
             ToBackendEvent { msg } ->
                 { onPress = Just (PressedEvent index)
-                , label = Element.text (String.fromInt index ++ ". " ++ ellipsis (singleLineView msg))
+                , label = Element.row [] [ Element.text (String.fromInt index ++ ". "), singleLineView msg ]
                 }
         )
 
