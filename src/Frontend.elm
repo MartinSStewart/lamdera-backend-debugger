@@ -15,6 +15,7 @@ import Html
 import Html.Attributes
 import Lamdera
 import Random
+import Set exposing (Set)
 import Sha256
 import SyntaxHighlight
 import Types exposing (..)
@@ -59,24 +60,38 @@ init url key =
             )
 
 
-getNavKey : FrontendModel -> Browser.Navigation.Key
-getNavKey model =
-    case model of
-        LoadingSession loadingData ->
-            loadingData.key
-
-        LoadedSession loadedData ->
-            loadedData.key
-
-
 update : FrontendMsg -> FrontendModel -> ( FrontendModel, Cmd FrontendMsg )
 update msg model =
+    case model of
+        LoadingSession loading ->
+            case msg of
+                GotRandomSessionName sessionName ->
+                    ( LoadingSession { loading | sessionName = sessionName }
+                    , Cmd.batch
+                        [ Lamdera.sendToBackend (LoadSessionRequest sessionName)
+                        , Browser.Navigation.replaceUrl loading.key ("/" ++ sessionNameToString sessionName)
+                        ]
+                    )
+
+                _ ->
+                    ( model, Cmd.none )
+
+        LoadedSession loaded ->
+            let
+                ( newLoaded, cmd ) =
+                    updateLoaded msg loaded
+            in
+            ( LoadedSession newLoaded, cmd )
+
+
+updateLoaded : FrontendMsg -> LoadedData -> ( LoadedData, Cmd FrontendMsg )
+updateLoaded msg model =
     case msg of
         UrlClicked urlRequest ->
             case urlRequest of
                 Internal url ->
                     ( model
-                    , Browser.Navigation.pushUrl (getNavKey model) (Url.toString url)
+                    , Browser.Navigation.pushUrl model.key (Url.toString url)
                     )
 
                 External url ->
@@ -88,28 +103,16 @@ update msg model =
             ( model, Cmd.none )
 
         PressedEvent index ->
-            case model of
-                LoadedSession loaded ->
-                    ( LoadedSession { loaded | selected = index }, Cmd.none )
-
-                _ ->
-                    ( model, Cmd.none )
+            ( { model | selected = index }, Cmd.none )
 
         PressedResetSession ->
             ( model, Lamdera.sendToBackend ResetSessionRequest )
 
-        GotRandomSessionName sessionName ->
-            case model of
-                LoadingSession loading ->
-                    ( LoadingSession { loading | sessionName = sessionName }
-                    , Cmd.batch
-                        [ Lamdera.sendToBackend (LoadSessionRequest sessionName)
-                        , Browser.Navigation.replaceUrl loading.key ("/" ++ sessionNameToString sessionName)
-                        ]
-                    )
+        GotRandomSessionName _ ->
+            ( model, Cmd.none )
 
-                _ ->
-                    ( model, Cmd.none )
+        TypedVariantFilter filter ->
+            ( { model | filter = filter }, Cmd.none )
 
 
 sessionNameToString : SessionName -> String
@@ -129,6 +132,7 @@ updateFromBackend msg model =
                         , initialModel = debugSession.initialModel
                         , history = debugSession.history
                         , selected = Array.length debugSession.history - 1
+                        , filter = ""
                         }
                     , Cmd.none
                     )
@@ -206,50 +210,108 @@ link url text =
         { url = url, label = Element.text text }
 
 
+eventIsHidden : Set String -> ElmValue -> Bool
+eventIsHidden hiddenVariants elmValue =
+    case Debug.log "a" elmValue of
+        Plain _ ->
+            False
+
+        Expandable expandableValue ->
+            case expandableValue of
+                ElmSequence _ elmValues ->
+                    List.any (eventIsHidden hiddenVariants) elmValues
+
+                ElmType variant elmValues ->
+                    Set.member variant hiddenVariants || List.any (eventIsHidden hiddenVariants) elmValues
+
+                ElmRecord list ->
+                    List.any (\( _, value ) -> eventIsHidden hiddenVariants value) list
+
+                ElmDict list ->
+                    List.any
+                        (\( key, value ) ->
+                            eventIsHidden hiddenVariants key
+                                || eventIsHidden hiddenVariants value
+                        )
+                        list
+
+
+instructionView : SessionName -> Element msg
+instructionView sessionName =
+    Element.column
+        [ Element.spacing 24
+        , Element.centerX
+        , Element.centerY
+        , Element.width (Element.px 600)
+        , Element.Font.size 20
+        ]
+        [ Element.paragraph
+            []
+            [ Element.text "To get started copy "
+            , link (Env.domain ++ "/DebugApp.elm") "DebugApp.elm"
+            , Element.text " into your src folder (or "
+            , link (Env.domain ++ "/EffectDebugApp.elm") "EffectDebugApp.elm"
+            , Element.text " if you are using "
+            , link "https://github.com/lamdera/program-test" "lamdera/program-test"
+            , Element.text ")."
+            ]
+        , Element.column
+            [ Element.spacing 8, Element.width Element.fill ]
+            [ Element.paragraph [] [ Element.text "Then replace" ]
+            , code SyntaxHighlight.elm codeBefore
+            , Element.text "with"
+            , code SyntaxHighlight.elm (codeAfter sessionName)
+            ]
+        ]
+
+
 loadedSessionView : LoadedData -> Element FrontendMsg
 loadedSessionView model =
+    let
+        filter : Set String
+        filter =
+            String.split "," model.filter |> List.map String.trim |> Set.fromList
+    in
     if Array.isEmpty model.history && model.initialModel == Nothing then
-        Element.column
-            [ Element.spacing 24
-            , Element.centerX
-            , Element.centerY
-            , Element.width (Element.px 600)
-            , Element.Font.size 20
-            ]
-            [ Element.paragraph
-                []
-                [ Element.text "To get started copy "
-                , link (Env.domain ++ "/DebugApp.elm") "DebugApp.elm"
-                , Element.text " into your src folder (or "
-                , link (Env.domain ++ "/EffectDebugApp.elm") "EffectDebugApp.elm"
-                , Element.text " if you are using "
-                , link "https://github.com/lamdera/program-test" "lamdera/program-test"
-                , Element.text ")."
-                ]
-            , Element.column
-                [ Element.spacing 8, Element.width Element.fill ]
-                [ Element.paragraph [] [ Element.text "Then replace" ]
-                , code SyntaxHighlight.elm codeBefore
-                , Element.text "with"
-                , code SyntaxHighlight.elm (codeAfter model.sessionName)
-                ]
-            ]
+        instructionView model.sessionName
 
     else
         Element.row
-            [ Element.width Element.fill, Element.height Element.fill ]
+            [ Element.width Element.fill, Element.height Element.fill, Element.padding 8 ]
             [ Element.column
-                [ Element.alignTop ]
-                [ Element.Input.button
-                    [ Element.Background.color (Element.rgb 1 0.4 0.2), Element.padding 8 ]
-                    { onPress = Just PressedResetSession
-                    , label = Element.text "Reset"
-                    }
+                [ Element.alignTop, Element.spacing 8, Element.width Element.fill ]
+                [ Element.row
+                    [ Element.spacing 4, Element.width Element.fill ]
+                    [ Element.Input.button
+                        [ Element.Background.color (Element.rgb 1 0.4 0.2), Element.padding 8, Element.height Element.fill ]
+                        { onPress = Just PressedResetSession
+                        , label = Element.text "Reset"
+                        }
+                    , Element.Input.text
+                        [ Element.padding 4, Element.width Element.fill, Element.spacing 0 ]
+                        { text = model.filter
+                        , onChange = TypedVariantFilter
+                        , placeholder = Nothing
+                        , label =
+                            Element.Input.labelAbove
+                                []
+                                (Element.paragraph
+                                    [ Element.Font.size 14 ]
+                                    [ Element.text "Comma delimited list of variants to hide" ]
+                                )
+                        }
+                    ]
                 , Element.column
                     [ Element.Background.color (Element.rgb 0.9 0.9 0.9) ]
-                    (List.indexedMap
-                        (eventView model.selected)
-                        (Array.toList model.history)
+                    (List.indexedMap Tuple.pair (Array.toList model.history)
+                        |> List.filterMap
+                            (\( index, event ) ->
+                                if eventIsHidden filter (eventMsg event) then
+                                    Nothing
+
+                                else
+                                    Just (eventView model.selected index event)
+                            )
                     )
                 ]
             , Element.column
@@ -391,6 +453,7 @@ singleLineView value =
                     Element.text "{{ ... }}"
 
 
+sequenceStartEnd : DebugParser.ElmValue.SequenceType -> ( String, String )
 sequenceStartEnd sequenceType =
     case sequenceType of
         DebugParser.ElmValue.SeqSet ->
@@ -404,12 +467,6 @@ sequenceStartEnd sequenceType =
 
         DebugParser.ElmValue.SeqTuple ->
             ( "(", ")" )
-
-
-indexedMap2 : (Int -> a -> b -> c) -> List a -> List b -> List c
-indexedMap2 func listA listB =
-    List.map2 Tuple.pair listA listB
-        |> List.indexedMap (\index ( a, b ) -> func index a b)
 
 
 isSingleLine : ElmValue -> Bool
@@ -587,7 +644,7 @@ treeViewDiff oldValue value =
                                     (\key old state ->
                                         Element.column
                                             [ oldColor ]
-                                            [ Element.row [] [ treeView key, Element.text "; " ]
+                                            [ Element.row [] [ treeView key, Element.text ": " ]
                                             , Element.el [ tabAmount ] (treeView old)
                                             ]
                                             :: state
@@ -595,7 +652,7 @@ treeViewDiff oldValue value =
                                     (\key old new state ->
                                         Element.column
                                             []
-                                            [ Element.row [] [ treeView key, Element.text "; " ]
+                                            [ Element.row [] [ treeView key, Element.text ": " ]
                                             , Element.el [ tabAmount ] (treeViewDiff old new)
                                             ]
                                             :: state
@@ -603,7 +660,7 @@ treeViewDiff oldValue value =
                                     (\key new state ->
                                         Element.column
                                             [ newColor ]
-                                            [ Element.row [] [ treeView key, Element.text "; " ]
+                                            [ Element.row [] [ treeView key, Element.text ": " ]
                                             , Element.el [ tabAmount ] (treeView new)
                                             ]
                                             :: state
@@ -727,7 +784,7 @@ treeView value =
                                 (\( key, value2 ) ->
                                     Element.column
                                         []
-                                        [ Element.row [ Element.alignTop ] [ treeView key, Element.text "; " ]
+                                        [ Element.row [ Element.alignTop ] [ treeView key, Element.text ": " ]
                                         , Element.el [ tabAmount ] (treeView value2)
                                         ]
                                 )
@@ -773,6 +830,7 @@ eventView selected index event =
         ([ Element.paddingXY 4 0
          , Element.width (Element.px 380)
          , Element.height (Element.px 28)
+         , Element.Font.size 14
          , Element.clip
          ]
             ++ (if selected == index then

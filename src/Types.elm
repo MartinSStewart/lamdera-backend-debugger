@@ -26,6 +26,7 @@ type alias LoadedData =
     , initialModel : Maybe ElmValue
     , history : Array Event
     , selected : Int
+    , filter : String
     }
 
 
@@ -82,6 +83,7 @@ type FrontendMsg
     | PressedEvent Int
     | PressedResetSession
     | GotRandomSessionName SessionName
+    | TypedVariantFilter String
 
 
 type ToBackend

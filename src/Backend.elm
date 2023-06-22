@@ -72,37 +72,7 @@ init =
                         [ BackendMsgEvent
                             { msg =
                                 Expandable
-                                    (ElmRecord
-                                        [ ( "a", Plain (ElmNumber 4) )
-                                        , ( "blahblah"
-                                          , Expandable
-                                                (ElmRecord
-                                                    [ ( "a", Plain (ElmNumber 5) )
-                                                    , ( "b"
-                                                      , Expandable
-                                                            (ElmSequence SeqList
-                                                                [ Plain (ElmNumber 4)
-                                                                , Plain (ElmNumber 4)
-                                                                ]
-                                                            )
-                                                      )
-                                                    ]
-                                                )
-                                          )
-                                        , ( "abc123"
-                                          , Expandable
-                                                (ElmDict
-                                                    [ ( Plain (ElmString "asdf123")
-                                                      , Plain (ElmNumber 3)
-                                                      )
-                                                    , ( Plain (ElmString "b")
-                                                      , Plain (ElmNumber 4)
-                                                      )
-                                                    ]
-                                                )
-                                          )
-                                        ]
-                                    )
+                                    (ElmType "Blah" [ Plain (ElmNumber 4), Plain (ElmNumber 4) ])
                             , newModel =
                                 Expandable
                                     (ElmRecord
