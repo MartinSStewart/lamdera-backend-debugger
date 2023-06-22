@@ -2,7 +2,7 @@ module Backend exposing (..)
 
 import Array
 import AssocList as Dict
-import DebugParser.ElmValue exposing (ElmValue(..), ExpandableValue(..), PlainValue(..))
+import DebugParser.ElmValue exposing (ElmValue(..), ExpandableValue(..), PlainValue(..), SequenceType(..))
 import Html
 import Lamdera exposing (ClientId, SessionId)
 import List.Extra as List
@@ -37,7 +37,34 @@ init =
                             (Expandable True
                                 (ElmRecord
                                     [ ( "a", Plain (ElmNumber 5) )
-                                    , ( "b", Plain (ElmString "c") )
+                                    , ( "blahblah"
+                                      , Expandable True
+                                            (ElmRecord
+                                                [ ( "a", Plain (ElmNumber 5) )
+                                                , ( "b"
+                                                  , Expandable True
+                                                        (ElmSequence SeqList
+                                                            [ Plain (ElmNumber 4)
+                                                            , Plain (ElmNumber 3)
+                                                            , Plain (ElmNumber 4)
+                                                            ]
+                                                        )
+                                                  )
+                                                ]
+                                            )
+                                      )
+                                    , ( "abc123"
+                                      , Expandable True
+                                            (ElmDict
+                                                [ ( Plain (ElmString "asdf123")
+                                                  , Plain (ElmNumber 4)
+                                                  )
+                                                , ( Plain (ElmString "a")
+                                                  , Plain (ElmNumber 4)
+                                                  )
+                                                ]
+                                            )
+                                      )
                                     ]
                                 )
                             )
@@ -48,27 +75,33 @@ init =
                                 Expandable True
                                     (ElmRecord
                                         [ ( "a", Plain (ElmNumber 4) )
-                                        , ( "b", Plain (ElmString "c") )
-                                        ]
-                                    )
-                            }
-                        , BackendMsgEvent
-                            { msg = Expandable True (ElmType "MyVariant" [ Plain (ElmNumber 5) ])
-                            , newModel =
-                                Expandable True
-                                    (ElmRecord
-                                        [ ( "a", Plain (ElmNumber 3) )
-                                        , ( "b", Plain (ElmString "c") )
-                                        ]
-                                    )
-                            }
-                        , BackendMsgEvent
-                            { msg = Expandable True (ElmType "MyVariant" [ Plain (ElmNumber 5) ])
-                            , newModel =
-                                Expandable True
-                                    (ElmRecord
-                                        [ ( "a", Plain (ElmNumber 5) )
-                                        , ( "b", Plain (ElmString "c") )
+                                        , ( "blahblah"
+                                          , Expandable True
+                                                (ElmRecord
+                                                    [ ( "a", Plain (ElmNumber 5) )
+                                                    , ( "b"
+                                                      , Expandable True
+                                                            (ElmSequence SeqList
+                                                                [ Plain (ElmNumber 4)
+                                                                , Plain (ElmNumber 4)
+                                                                ]
+                                                            )
+                                                      )
+                                                    ]
+                                                )
+                                          )
+                                        , ( "abc123"
+                                          , Expandable True
+                                                (ElmDict
+                                                    [ ( Plain (ElmString "asdf123")
+                                                      , Plain (ElmNumber 3)
+                                                      )
+                                                    , ( Plain (ElmString "b")
+                                                      , Plain (ElmNumber 4)
+                                                      )
+                                                    ]
+                                                )
+                                          )
                                         ]
                                     )
                             }
