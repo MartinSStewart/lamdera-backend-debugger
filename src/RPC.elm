@@ -40,28 +40,31 @@ decodeDataType =
             (\dataType ->
                 case dataType of
                     2 ->
-                        Json.Decode.map5
+                        Json.Decode.map6
                             UpdateFromFrontend_
                             (Json.Decode.index 1 decodeSessionName)
                             (Json.Decode.index 2 decodeElmValue)
                             (Json.Decode.index 3 decodeElmValue)
                             (Json.Decode.index 4 Json.Decode.string)
                             (Json.Decode.index 5 Json.Decode.string)
+                            (Json.Decode.index 6 (Json.Decode.nullable decodeElmValue))
                             |> Json.Decode.map UpdateFromFrontend
 
                     1 ->
-                        Json.Decode.map3
+                        Json.Decode.map4
                             Update_
                             (Json.Decode.index 1 decodeSessionName)
                             (Json.Decode.index 2 decodeElmValue)
                             (Json.Decode.index 3 decodeElmValue)
+                            (Json.Decode.index 4 (Json.Decode.nullable decodeElmValue))
                             |> Json.Decode.map Update
 
                     0 ->
-                        Json.Decode.map2
+                        Json.Decode.map3
                             Init_
                             (Json.Decode.index 1 decodeSessionName)
                             (Json.Decode.index 2 decodeElmValue)
+                            (Json.Decode.index 3 (Json.Decode.nullable decodeElmValue))
                             |> Json.Decode.map Init
 
                     _ ->
@@ -103,6 +106,7 @@ dataEndpoint _ model request =
                                             , clientId = data.clientId
                                             , msg = data.msg
                                             , newModel = data.newModel
+                                            , cmd = data.maybeCmd
                                             }
                                         )
                                         session.history
@@ -130,7 +134,12 @@ dataEndpoint _ model request =
                             { session
                                 | history =
                                     Array.push
-                                        (BackendMsgEvent { msg = data.msg, newModel = data.newModel })
+                                        (BackendMsgEvent
+                                            { msg = data.msg
+                                            , newModel = data.newModel
+                                            , cmd = data.maybeCmd
+                                            }
+                                        )
                                         session.history
                             }
                         )
@@ -199,6 +208,7 @@ updateSession dataType sessionName func model =
                 (\maybeSession ->
                     Maybe.withDefault
                         { initialModel = Nothing
+                        , initialCmd = Nothing
                         , history = Array.empty
                         , connections = Set.empty
                         }

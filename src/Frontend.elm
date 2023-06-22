@@ -53,10 +53,7 @@ init url key =
                 GotRandomSessionName
                 (Random.map
                     (\int -> String.fromInt int |> Sha256.sha224 |> String.left 16 |> SessionName)
-                    (Random.int
-                        -(2 ^ 53 - 1)
-                        (2 ^ 53 - 1)
-                    )
+                    (Random.int Random.minInt Random.maxInt)
                 )
             )
 
@@ -137,6 +134,7 @@ updateFromBackend msg model =
                         { key = loading.key
                         , sessionName = loading.sessionName
                         , initialModel = debugSession.initialModel
+                        , initialCmd = debugSession.initialCmd
                         , history = debugSession.history
                         , selected = Array.length debugSession.history - 1
                         , filter = ""
@@ -160,7 +158,12 @@ updateFromBackend msg model =
                                 { loaded
                                     | history =
                                         Array.push
-                                            (BackendMsgEvent { msg = update_.msg, newModel = update_.newModel })
+                                            (BackendMsgEvent
+                                                { msg = update_.msg
+                                                , newModel = update_.newModel
+                                                , cmd = update_.maybeCmd
+                                                }
+                                            )
                                             loaded.history
                                 }
 
@@ -174,6 +177,7 @@ updateFromBackend msg model =
                                                 , newModel = update_.newModel
                                                 , sessionId = update_.sessionId
                                                 , clientId = update_.clientId
+                                                , cmd = update_.maybeCmd
                                                 }
                                             )
                                             loaded.history
@@ -346,6 +350,19 @@ loadedSessionView model =
 
                     Nothing ->
                         Element.none
+                , case getCmd model.selected model of
+                    Just cmd ->
+                        Element.column
+                            [ Element.width Element.fill
+                            , Element.Font.family [ Element.Font.monospace ]
+                            , Element.spacing 4
+                            ]
+                            [ Element.el [ Element.Font.bold ] (Element.text "Cmd")
+                            , treeView cmd
+                            ]
+
+                    Nothing ->
+                        Element.none
                 , case ( getModel (model.selected - 1) model, getModel model.selected model ) of
                     ( Just previousEvent, Just event ) ->
                         Element.column
@@ -394,9 +411,10 @@ charText char =
 
 
 emptyDict =
-    Element.el [ Element.Font.color (Element.rgb 0.4 0.4 0.4) ] (Element.text "<Empty dict>")
+    Element.el [ Element.Font.color (Element.rgb 0.4 0.4 0.4) ] (Element.text "<empty dict>")
 
 
+collapsedValue : ElmValue -> Element msg
 collapsedValue value =
     Element.el
         [ Element.Font.color (Element.rgb 0.4 0.4 0.4) ]
@@ -899,6 +917,18 @@ getModel index model =
         Array.get index model.history |> Maybe.map eventNewModel
 
 
+getCmd :
+    Int
+    -> { a | initialCmd : Maybe ElmValue, selected : Int, history : Array Event }
+    -> Maybe ElmValue
+getCmd index model =
+    if index == -1 then
+        model.initialCmd
+
+    else
+        Array.get index model.history |> Maybe.andThen eventCmd
+
+
 eventMsg : Event -> ElmValue
 eventMsg event =
     case event of
@@ -917,6 +947,16 @@ eventNewModel event =
 
         ToBackendEvent { newModel } ->
             newModel
+
+
+eventCmd : Event -> Maybe ElmValue
+eventCmd event =
+    case event of
+        BackendMsgEvent { cmd } ->
+            cmd
+
+        ToBackendEvent { cmd } ->
+            cmd
 
 
 eventView : Int -> Int -> Event -> Element FrontendMsg

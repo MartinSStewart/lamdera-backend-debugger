@@ -32,7 +32,8 @@ init =
       { sessions =
             Dict.fromList
                 [ ( SessionName "test"
-                  , { initialModel =
+                  , { initialCmd = Just (Plain (ElmNumber 5))
+                    , initialModel =
                         Just
                             (Expandable
                                 (ElmRecord
@@ -73,6 +74,7 @@ init =
                             { msg =
                                 Expandable
                                     (ElmType "Blah" [ Plain (ElmNumber 4), Plain (ElmNumber 4) ])
+                            , cmd = Just (Plain (ElmNumber 5))
                             , newModel =
                                 Expandable
                                     (ElmRecord
@@ -156,6 +158,7 @@ updateFromFrontend sessionId clientId msg model =
                         session : DebugSession
                         session =
                             { initialModel = Nothing
+                            , initialCmd = Nothing
                             , history = Array.empty
                             , connections = Set.singleton clientId
                             }

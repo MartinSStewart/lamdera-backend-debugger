@@ -106,6 +106,7 @@ encodeDataType data =
                 [ Json.Encode.int 0
                 , Json.Encode.string sessionName
                 , Json.Encode.string model
+                , Json.Encode.null
                 ]
 
             Update { sessionName, msg, newModel } ->
@@ -113,6 +114,7 @@ encodeDataType data =
                 , Json.Encode.string sessionName
                 , Json.Encode.string msg
                 , Json.Encode.string newModel
+                , Json.Encode.null
                 ]
 
             UpdateFromFrontend { sessionName, msg, newModel, sessionId, clientId } ->
@@ -122,5 +124,6 @@ encodeDataType data =
                 , Json.Encode.string newModel
                 , Json.Encode.string sessionId
                 , Json.Encode.string clientId
+                , Json.Encode.null
                 ]
         )

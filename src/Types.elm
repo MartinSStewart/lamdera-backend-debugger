@@ -25,6 +25,7 @@ type alias LoadedData =
     { key : Key
     , sessionName : SessionName
     , initialModel : Maybe ElmValue
+    , initialCmd : Maybe ElmValue
     , history : Array Event
     , selected : Int
     , filter : String
@@ -55,19 +56,26 @@ type DataType
 
 
 type alias Init_ =
-    { sessionName : SessionName, model : ElmValue }
+    { sessionName : SessionName, model : ElmValue, maybeCmd : Maybe ElmValue }
 
 
 type alias Update_ =
-    { sessionName : SessionName, msg : ElmValue, newModel : ElmValue }
+    { sessionName : SessionName, msg : ElmValue, newModel : ElmValue, maybeCmd : Maybe ElmValue }
 
 
 type alias UpdateFromFrontend_ =
-    { sessionName : SessionName, msg : ElmValue, newModel : ElmValue, sessionId : String, clientId : String }
+    { sessionName : SessionName
+    , msg : ElmValue
+    , newModel : ElmValue
+    , sessionId : String
+    , clientId : String
+    , maybeCmd : Maybe ElmValue
+    }
 
 
 type alias DebugSession =
     { initialModel : Maybe ElmValue
+    , initialCmd : Maybe ElmValue
     , history : Array Event
     , connections : Set ClientId
     }
@@ -79,11 +87,11 @@ type Event
 
 
 type alias BackendMsgEvent_ =
-    { msg : ElmValue, newModel : ElmValue }
+    { msg : ElmValue, newModel : ElmValue, cmd : Maybe ElmValue }
 
 
 type alias ToBackendEvent_ =
-    { msg : ElmValue, newModel : ElmValue, sessionId : String, clientId : String }
+    { msg : ElmValue, newModel : ElmValue, sessionId : String, clientId : String, cmd : Maybe ElmValue }
 
 
 type FrontendMsg

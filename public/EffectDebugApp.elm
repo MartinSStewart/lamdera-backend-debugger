@@ -20,7 +20,7 @@ backend backendNoOp sessionName broadcast sendToFrontend { init, update, updateF
                 [ cmd
                 , sendToViewer
                     backendNoOp
-                    (Init { sessionName = sessionName, model = Debug.toString model })
+                    (Init { sessionName = sessionName, model = Debug.toString model, cmd = Debug.toString cmd })
                 ]
             )
         , update =
@@ -42,6 +42,7 @@ backend backendNoOp sessionName broadcast sendToFrontend { init, update, updateF
                                 { sessionName = sessionName
                                 , msg = Debug.toString msg
                                 , newModel = Debug.toString newModel
+                                , cmd = Debug.toString cmd
                                 }
                             )
                     ]
@@ -63,6 +64,7 @@ backend backendNoOp sessionName broadcast sendToFrontend { init, update, updateF
                             , newModel = Debug.toString newModel
                             , sessionId = Effect.Lamdera.sessionIdToString sessionId
                             , clientId = Effect.Lamdera.clientIdToString clientId
+                            , cmd = Debug.toString cmd
                             }
                         )
                     ]
@@ -72,9 +74,9 @@ backend backendNoOp sessionName broadcast sendToFrontend { init, update, updateF
 
 
 type DataType
-    = Init { sessionName : String, model : String }
-    | Update { sessionName : String, msg : String, newModel : String }
-    | UpdateFromFrontend { sessionName : String, msg : String, newModel : String, sessionId : String, clientId : String }
+    = Init { sessionName : String, model : String, cmd : String }
+    | Update { sessionName : String, msg : String, newModel : String, cmd : String }
+    | UpdateFromFrontend { sessionName : String, msg : String, newModel : String, sessionId : String, clientId : String, cmd : String }
 
 
 sendToViewer : msg -> DataType -> Command BackendOnly toFrontend msg
@@ -91,20 +93,20 @@ encodeDataType data =
     Json.Encode.list
         identity
         (case data of
-            Init { sessionName, model } ->
+            Init { sessionName, model, cmd } ->
                 [ Json.Encode.int 0
                 , Json.Encode.string sessionName
                 , Json.Encode.string model
                 ]
 
-            Update { sessionName, msg, newModel } ->
+            Update { sessionName, msg, newModel, cmd } ->
                 [ Json.Encode.int 1
                 , Json.Encode.string sessionName
                 , Json.Encode.string msg
                 , Json.Encode.string newModel
                 ]
 
-            UpdateFromFrontend { sessionName, msg, newModel, sessionId, clientId } ->
+            UpdateFromFrontend { sessionName, msg, newModel, sessionId, clientId, cmd } ->
                 [ Json.Encode.int 2
                 , Json.Encode.string sessionName
                 , Json.Encode.string msg
