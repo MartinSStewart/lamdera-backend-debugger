@@ -70,7 +70,39 @@ init =
                             )
                     , history =
                         [ BackendMsgEvent
-                            { msg = Expandable True (ElmType "MyVariant" [ Plain (ElmNumber 5) ])
+                            { msg =
+                                Expandable True
+                                    (ElmRecord
+                                        [ ( "a", Plain (ElmNumber 4) )
+                                        , ( "blahblah"
+                                          , Expandable True
+                                                (ElmRecord
+                                                    [ ( "a", Plain (ElmNumber 5) )
+                                                    , ( "b"
+                                                      , Expandable True
+                                                            (ElmSequence SeqList
+                                                                [ Plain (ElmNumber 4)
+                                                                , Plain (ElmNumber 4)
+                                                                ]
+                                                            )
+                                                      )
+                                                    ]
+                                                )
+                                          )
+                                        , ( "abc123"
+                                          , Expandable True
+                                                (ElmDict
+                                                    [ ( Plain (ElmString "asdf123")
+                                                      , Plain (ElmNumber 3)
+                                                      )
+                                                    , ( Plain (ElmString "b")
+                                                      , Plain (ElmNumber 4)
+                                                      )
+                                                    ]
+                                                )
+                                          )
+                                        ]
+                                    )
                             , newModel =
                                 Expandable True
                                     (ElmRecord

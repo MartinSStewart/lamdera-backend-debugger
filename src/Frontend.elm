@@ -381,13 +381,13 @@ indexedMap2 func listA listB =
         |> List.indexedMap (\index ( a, b ) -> func index a b)
 
 
-rowOrColumn elmValue =
+rowOrColumn elmValue rowAttr columnAttr =
     case elmValue of
         Plain _ ->
-            Element.row
+            Element.row rowAttr
 
         Expandable _ _ ->
-            Element.column
+            Element.column columnAttr
 
 
 treeViewDiff : ElmValue -> ElmValue -> Element msg
@@ -400,7 +400,7 @@ treeViewDiff oldValue value =
             else
                 Element.column
                     []
-                    [ Element.el [ oldColor ] (treeView oldValue)
+                    [ plainValueToString oldPlainValue |> Element.text |> Element.el [ oldColor ]
                     , plainValueToString plainValue |> Element.text |> Element.el [ newColor ]
                     ]
 
@@ -412,7 +412,7 @@ treeViewDiff oldValue value =
                             ( startChar, endChar ) =
                                 sequenceStartEnd sequenceType
                         in
-                        Element.el [ Element.moveRight 16 ] (Element.text (startChar ++ endChar))
+                        Element.text (startChar ++ endChar)
 
                     else
                         let
@@ -427,29 +427,13 @@ treeViewDiff oldValue value =
                                     List.reverse elmValues
                                         |> List.take lengthDiff
                                         |> List.reverse
-                                        |> List.map
-                                            (\a ->
-                                                Element.row []
-                                                    [ Element.el
-                                                        [ Element.alignTop ]
-                                                        (Element.text ", ")
-                                                    , Element.el [ newColor ] (treeView a)
-                                                    ]
-                                            )
+                                        |> List.map (\a -> Element.el [ newColor ] (treeView a))
 
                                 else
                                     List.reverse oldElmValues
                                         |> List.take -lengthDiff
                                         |> List.reverse
-                                        |> List.map
-                                            (\a ->
-                                                Element.row []
-                                                    [ Element.el
-                                                        [ Element.alignTop ]
-                                                        (Element.text ", ")
-                                                    , Element.el [ oldColor ] (treeView a)
-                                                    ]
-                                            )
+                                        |> List.map (\a -> Element.el [ oldColor ] (treeView a))
 
                             pairedItems =
                                 List.map2
@@ -460,7 +444,7 @@ treeViewDiff oldValue value =
                                     elmValues
                         in
                         Element.column
-                            [ Element.moveRight 16 ]
+                            []
                             (List.indexedMap
                                 (\index a ->
                                     if index == 0 then
@@ -484,49 +468,50 @@ treeViewDiff oldValue value =
                             )
 
                 ( ElmType oldVariant oldElmValues, ElmType variant elmValues ) ->
-                    (case elmValues of
-                        [ Plain _ ] ->
-                            Element.row [ Element.moveRight 16 ]
+                    if oldVariant == variant then
+                        case ( oldElmValues, elmValues ) of
+                            ( [ (Plain _) as oldPlain ], [ (Plain _) as plain ] ) ->
+                                Element.row
+                                    []
+                                    [ Element.el [ Element.alignTop ] (Element.text variant)
+                                    , treeViewDiff oldPlain plain
+                                    ]
 
-                        _ ->
-                            Element.column [ Element.moveRight 16 ]
-                    )
-                        (if oldVariant == variant then
-                            [ Element.text variant
-                            , Element.column
-                                [ Element.moveRight 16 ]
-                                (List.map2 (\old new -> treeViewDiff old new) oldElmValues elmValues)
-                            ]
+                            _ ->
+                                Element.column
+                                    []
+                                    [ Element.text variant
+                                    , Element.column
+                                        [ Element.moveRight 16 ]
+                                        (List.map2 treeViewDiff oldElmValues elmValues)
+                                    ]
 
-                         else
-                            [ Element.column
-                                [ oldColor ]
-                                [ Element.text oldVariant
-                                , Element.column
-                                    [ Element.moveRight 16 ]
-                                    (List.map treeView oldElmValues)
-                                ]
-                            , Element.column
-                                [ newColor ]
-                                [ Element.text variant
-                                , Element.column
-                                    [ Element.moveRight 16 ]
-                                    (List.map treeView elmValues)
-                                ]
+                    else
+                        Element.column
+                            []
+                            [ Element.el [ oldColor ] (treeView oldValue)
+                            , Element.el [ newColor ] (treeView value)
                             ]
-                        )
 
                 ( ElmRecord oldRecord, ElmRecord record ) ->
                     Element.column
-                        [ Element.moveRight 16 ]
+                        []
                         (List.map2
                             (\( _, oldElmValue ) ( fieldName, elmValue ) ->
-                                rowOrColumn
-                                    elmValue
-                                    []
-                                    [ Element.el [ Element.alignTop ] (Element.text (fieldName ++ ": "))
-                                    , treeViewDiff oldElmValue elmValue
-                                    ]
+                                case elmValue of
+                                    Plain _ ->
+                                        Element.row []
+                                            [ Element.el [ Element.alignTop ] (Element.text (fieldName ++ ": "))
+                                            , treeViewDiff oldElmValue elmValue
+                                            ]
+
+                                    Expandable _ _ ->
+                                        Element.column []
+                                            [ Element.text (fieldName ++ ": ")
+                                            , Element.el
+                                                [ Element.moveRight 16 ]
+                                                (treeViewDiff oldElmValue elmValue)
+                                            ]
                             )
                             oldRecord
                             record
@@ -546,6 +531,7 @@ treeViewDiff oldValue value =
                                     rowOrColumn
                                         old
                                         [ oldColor ]
+                                        [ oldColor, Element.moveRight 16 ]
                                         [ Element.row [ Element.alignTop ] [ treeView key, Element.text "; " ]
                                         , treeView old
                                         ]
@@ -555,6 +541,7 @@ treeViewDiff oldValue value =
                                     rowOrColumn
                                         new
                                         []
+                                        [ Element.moveRight 16 ]
                                         [ Element.row [ Element.alignTop ] [ treeView key, Element.text "; " ]
                                         , treeViewDiff old new
                                         ]
@@ -564,6 +551,7 @@ treeViewDiff oldValue value =
                                     rowOrColumn
                                         new
                                         [ newColor ]
+                                        [ newColor, Element.moveRight 16 ]
                                         [ Element.row [ Element.alignTop ] [ treeView key, Element.text "; " ]
                                         , treeView new
                                         ]
@@ -573,7 +561,7 @@ treeViewDiff oldValue value =
                                 dict2
                                 []
                     in
-                    Element.column [ Element.moveRight 16 ] merge
+                    Element.column [] merge
 
                 _ ->
                     Element.text "Error, old and new types don't match"
@@ -596,7 +584,7 @@ treeView value =
                             ( startChar, endChar ) =
                                 sequenceStartEnd sequenceType
                         in
-                        Element.el [ Element.moveRight 16 ] (Element.text (startChar ++ endChar))
+                        Element.text (startChar ++ endChar)
 
                     else
                         let
@@ -604,7 +592,7 @@ treeView value =
                                 sequenceStartEnd sequenceType
                         in
                         Element.column
-                            [ Element.moveRight 16 ]
+                            []
                             (List.indexedMap
                                 (\index new ->
                                     if index == 0 then
@@ -628,40 +616,52 @@ treeView value =
                             )
 
                 DebugParser.ElmValue.ElmType variant elmValues ->
-                    (case elmValues of
-                        [ Plain _ ] ->
-                            Element.row [ Element.moveRight 16 ]
+                    case elmValues of
+                        [ Plain plain ] ->
+                            Element.row []
+                                [ Element.el [ Element.alignTop ] (Element.text variant)
+                                , plainValueToString plain |> Element.text
+                                ]
 
                         _ ->
-                            Element.column [ Element.moveRight 16 ]
-                    )
-                        [ Element.text variant
-                        , Element.column [ Element.moveRight 16 ] (List.map treeView elmValues)
-                        ]
+                            Element.column
+                                []
+                                [ Element.text variant
+                                , Element.column [ Element.moveRight 16 ] (List.map treeView elmValues)
+                                ]
 
                 DebugParser.ElmValue.ElmRecord fields ->
                     Element.column
-                        [ Element.moveRight 16 ]
+                        []
                         (List.map
                             (\( fieldName, elmValue ) ->
-                                rowOrColumn
-                                    elmValue
-                                    []
-                                    [ Element.el [ Element.alignTop ] (Element.text (fieldName ++ ": "))
-                                    , treeView elmValue
-                                    ]
+                                case elmValue of
+                                    Plain _ ->
+                                        Element.row
+                                            []
+                                            [ Element.el [ Element.alignTop ] (Element.text (fieldName ++ ": "))
+                                            , treeView elmValue
+                                            ]
+
+                                    Expandable _ _ ->
+                                        Element.column
+                                            []
+                                            [ Element.text (fieldName ++ ": ")
+                                            , Element.el [ Element.moveRight 16 ] (treeView elmValue)
+                                            ]
                             )
                             fields
                         )
 
                 DebugParser.ElmValue.ElmDict dict ->
                     Element.column
-                        [ Element.moveRight 16 ]
+                        []
                         (List.map
                             (\( key, value2 ) ->
                                 rowOrColumn
                                     value2
-                                    [ newColor ]
+                                    []
+                                    [ Element.moveRight 16 ]
                                     [ Element.row [ Element.alignTop ] [ treeView key, Element.text "; " ]
                                     , treeView value2
                                     ]
