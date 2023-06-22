@@ -3,7 +3,7 @@ module RPC exposing (..)
 import Array
 import AssocList as Dict
 import DebugParser
-import DebugParser.ElmValue exposing (ElmValue)
+import DebugParser.ElmValue exposing (ElmValue(..), ExpandableValue(..), SequenceType(..))
 import Http
 import Json.Decode exposing (Decoder)
 import Json.Encode
@@ -22,7 +22,7 @@ decodeElmValue =
             (\text ->
                 case DebugParser.parse ("0: " ++ text) of
                     Ok ok ->
-                        Json.Decode.succeed ok.value
+                        Json.Decode.succeed (refineElmValue ok.value)
 
                     Err error ->
                         Json.Decode.fail error
@@ -143,6 +143,43 @@ dataEndpoint _ model request =
                         ++ Json.Decode.errorToString error
             in
             ( Err (Http.BadBody errorText), model, Cmd.none )
+
+
+refineElmValue : ElmValue -> ElmValue
+refineElmValue value =
+    case value of
+        Plain plain ->
+            value
+
+        Expandable expandableValue ->
+            case expandableValue of
+                ElmSequence sequenceType elmValues ->
+                    value
+
+                ElmType variant elmValues ->
+                    case ( variant, elmValues ) of
+                        ( "D", [ Expandable (ElmSequence SeqList list) ] ) ->
+                            List.filterMap
+                                (\a ->
+                                    case a of
+                                        Expandable (ElmSequence SeqTuple [ key, value2 ]) ->
+                                            Just ( key, value2 )
+
+                                        _ ->
+                                            Nothing
+                                )
+                                list
+                                |> ElmDict
+                                |> Expandable
+
+                        _ ->
+                            value
+
+                ElmRecord list ->
+                    value
+
+                ElmDict list ->
+                    value
 
 
 updateSession :

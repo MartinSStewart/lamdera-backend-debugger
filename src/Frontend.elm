@@ -539,44 +539,48 @@ treeViewDiff oldValue value =
                         )
 
                 ( ElmDict oldDict, ElmDict dict ) ->
-                    let
-                        oldDict2 =
-                            AssocList.fromList oldDict
+                    if List.isEmpty oldDict && List.isEmpty dict then
+                        Element.text "<Empty dict>"
 
-                        dict2 =
-                            AssocList.fromList dict
+                    else
+                        let
+                            oldDict2 =
+                                AssocList.fromList oldDict
 
-                        merge =
-                            AssocList.merge
-                                (\key old state ->
-                                    Element.column
-                                        [ oldColor ]
-                                        [ Element.row [] [ treeView key, Element.text "; " ]
-                                        , Element.el [ Element.moveRight 16 ] (treeView old)
-                                        ]
-                                        :: state
-                                )
-                                (\key old new state ->
-                                    Element.column
-                                        []
-                                        [ Element.row [] [ treeView key, Element.text "; " ]
-                                        , Element.el [ Element.moveRight 16 ] (treeViewDiff old new)
-                                        ]
-                                        :: state
-                                )
-                                (\key new state ->
-                                    Element.column
-                                        [ newColor ]
-                                        [ Element.row [] [ treeView key, Element.text "; " ]
-                                        , Element.el [ Element.moveRight 16 ] (treeView new)
-                                        ]
-                                        :: state
-                                )
-                                oldDict2
-                                dict2
-                                []
-                    in
-                    Element.column [] merge
+                            dict2 =
+                                AssocList.fromList dict
+
+                            merge =
+                                AssocList.merge
+                                    (\key old state ->
+                                        Element.column
+                                            [ oldColor ]
+                                            [ Element.row [] [ treeView key, Element.text "; " ]
+                                            , Element.el [ Element.moveRight 16 ] (treeView old)
+                                            ]
+                                            :: state
+                                    )
+                                    (\key old new state ->
+                                        Element.column
+                                            []
+                                            [ Element.row [] [ treeView key, Element.text "; " ]
+                                            , Element.el [ Element.moveRight 16 ] (treeViewDiff old new)
+                                            ]
+                                            :: state
+                                    )
+                                    (\key new state ->
+                                        Element.column
+                                            [ newColor ]
+                                            [ Element.row [] [ treeView key, Element.text "; " ]
+                                            , Element.el [ Element.moveRight 16 ] (treeView new)
+                                            ]
+                                            :: state
+                                    )
+                                    oldDict2
+                                    dict2
+                                    []
+                        in
+                        Element.column [] merge
 
                 _ ->
                     Element.text "Error, old and new types don't match"
@@ -676,18 +680,22 @@ treeView value =
                         )
 
                 DebugParser.ElmValue.ElmDict dict ->
-                    Element.column
-                        []
-                        (List.map
-                            (\( key, value2 ) ->
-                                Element.column
-                                    []
-                                    [ Element.row [ Element.alignTop ] [ treeView key, Element.text "; " ]
-                                    , Element.el [ Element.moveRight 16 ] (treeView value2)
-                                    ]
+                    if List.isEmpty dict then
+                        Element.text "<Empty dict>"
+
+                    else
+                        Element.column
+                            []
+                            (List.map
+                                (\( key, value2 ) ->
+                                    Element.column
+                                        []
+                                        [ Element.row [ Element.alignTop ] [ treeView key, Element.text "; " ]
+                                        , Element.el [ Element.moveRight 16 ] (treeView value2)
+                                        ]
+                                )
+                                dict
                             )
-                            dict
-                        )
 
 
 getModel :
