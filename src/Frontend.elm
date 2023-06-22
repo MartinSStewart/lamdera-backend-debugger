@@ -407,72 +407,80 @@ treeViewDiff oldValue value =
         ( Expandable _ oldExpandableValue, Expandable _ expandableValue ) ->
             case ( oldExpandableValue, expandableValue ) of
                 ( ElmSequence _ oldElmValues, ElmSequence sequenceType elmValues ) ->
-                    let
-                        ( startChar, endChar ) =
-                            sequenceStartEnd sequenceType
+                    if List.isEmpty oldElmValues && List.isEmpty elmValues then
+                        let
+                            ( startChar, endChar ) =
+                                sequenceStartEnd sequenceType
+                        in
+                        Element.el [ Element.moveRight 16 ] (Element.text (startChar ++ endChar))
 
-                        lengthDiff =
-                            List.length elmValues - List.length oldElmValues
+                    else
+                        let
+                            ( startChar, endChar ) =
+                                sequenceStartEnd sequenceType
 
-                        newItems =
-                            if lengthDiff > 0 then
-                                List.reverse elmValues
-                                    |> List.take lengthDiff
-                                    |> List.reverse
-                                    |> List.map
-                                        (\a ->
-                                            Element.row []
-                                                [ Element.el
-                                                    [ Element.alignTop ]
-                                                    (Element.text ", ")
-                                                , Element.el [ newColor ] (treeView a)
-                                                ]
-                                        )
+                            lengthDiff =
+                                List.length elmValues - List.length oldElmValues
 
-                            else
-                                List.reverse oldElmValues
-                                    |> List.take -lengthDiff
-                                    |> List.reverse
-                                    |> List.map
-                                        (\a ->
-                                            Element.row []
-                                                [ Element.el
-                                                    [ Element.alignTop ]
-                                                    (Element.text ", ")
-                                                , Element.el [ oldColor ] (treeView a)
-                                                ]
-                                        )
-                    in
-                    Element.column
-                        [ Element.moveRight 16 ]
-                        (indexedMap2
-                            (\index old new ->
-                                if index == 0 then
-                                    Element.row []
-                                        [ Element.el
-                                            [ Element.alignTop ]
-                                            (Element.text (String.padRight 2 ' ' startChar))
-                                        , treeViewDiff old new
-                                        ]
+                            newItems =
+                                if lengthDiff > 0 then
+                                    List.reverse elmValues
+                                        |> List.take lengthDiff
+                                        |> List.reverse
+                                        |> List.map
+                                            (\a ->
+                                                Element.row []
+                                                    [ Element.el
+                                                        [ Element.alignTop ]
+                                                        (Element.text ", ")
+                                                    , Element.el [ newColor ] (treeView a)
+                                                    ]
+                                            )
 
                                 else
-                                    Element.row []
-                                        [ Element.el
-                                            [ Element.alignTop ]
-                                            (Element.text ", ")
-                                        , treeViewDiff old new
-                                        ]
+                                    List.reverse oldElmValues
+                                        |> List.take -lengthDiff
+                                        |> List.reverse
+                                        |> List.map
+                                            (\a ->
+                                                Element.row []
+                                                    [ Element.el
+                                                        [ Element.alignTop ]
+                                                        (Element.text ", ")
+                                                    , Element.el [ oldColor ] (treeView a)
+                                                    ]
+                                            )
+                        in
+                        Element.column
+                            [ Element.moveRight 16 ]
+                            (indexedMap2
+                                (\index old new ->
+                                    if index == 0 then
+                                        Element.row []
+                                            [ Element.el
+                                                [ Element.alignTop ]
+                                                (Element.text (String.padRight 2 ' ' startChar))
+                                            , treeViewDiff old new
+                                            ]
+
+                                    else
+                                        Element.row []
+                                            [ Element.el
+                                                [ Element.alignTop ]
+                                                (Element.text ", ")
+                                            , treeViewDiff old new
+                                            ]
+                                )
+                                oldElmValues
+                                elmValues
+                                ++ newItems
+                                ++ [ Element.text endChar ]
                             )
-                            oldElmValues
-                            elmValues
-                            ++ newItems
-                            ++ [ Element.text endChar ]
-                        )
 
                 ( ElmType oldVariant oldElmValues, ElmType variant elmValues ) ->
                     if oldVariant == variant then
                         Element.column
-                            []
+                            [ Element.moveRight 16 ]
                             [ Element.text variant
                             , Element.column
                                 [ Element.moveRight 16 ]
@@ -481,7 +489,7 @@ treeViewDiff oldValue value =
 
                     else
                         Element.column
-                            []
+                            [ Element.moveRight 16 ]
                             [ Element.column
                                 [ oldColor ]
                                 [ Element.text oldVariant
@@ -573,33 +581,41 @@ treeView value =
         Expandable bool expandableValue ->
             case expandableValue of
                 DebugParser.ElmValue.ElmSequence sequenceType elmValues ->
-                    let
-                        ( startChar, endChar ) =
-                            sequenceStartEnd sequenceType
-                    in
-                    Element.column
-                        [ Element.moveRight 16 ]
-                        (List.indexedMap
-                            (\index new ->
-                                if index == 0 then
-                                    Element.row []
-                                        [ Element.el
-                                            [ Element.alignTop ]
-                                            (Element.text (String.padRight 2 ' ' startChar))
-                                        , treeView new
-                                        ]
+                    if List.isEmpty elmValues then
+                        let
+                            ( startChar, endChar ) =
+                                sequenceStartEnd sequenceType
+                        in
+                        Element.el [ Element.moveRight 16 ] (Element.text (startChar ++ endChar))
 
-                                else
-                                    Element.row []
-                                        [ Element.el
-                                            [ Element.alignTop ]
-                                            (Element.text ", ")
-                                        , treeView new
-                                        ]
+                    else
+                        let
+                            ( startChar, endChar ) =
+                                sequenceStartEnd sequenceType
+                        in
+                        Element.column
+                            [ Element.moveRight 16 ]
+                            (List.indexedMap
+                                (\index new ->
+                                    if index == 0 then
+                                        Element.row []
+                                            [ Element.el
+                                                [ Element.alignTop ]
+                                                (Element.text (String.padRight 2 ' ' startChar))
+                                            , treeView new
+                                            ]
+
+                                    else
+                                        Element.row []
+                                            [ Element.el
+                                                [ Element.alignTop ]
+                                                (Element.text ", ")
+                                            , treeView new
+                                            ]
+                                )
+                                elmValues
+                                ++ [ Element.text endChar ]
                             )
-                            elmValues
-                            ++ [ Element.text endChar ]
-                        )
 
                 DebugParser.ElmValue.ElmType string elmValues ->
                     Element.column
