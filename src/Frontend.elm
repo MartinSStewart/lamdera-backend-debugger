@@ -482,17 +482,27 @@ treeViewDiff oldValue value =
                 ( ElmType oldVariant oldElmValues, ElmType variant elmValues ) ->
                     if oldVariant == variant then
                         case ( oldElmValues, elmValues ) of
-                            ( [ (Plain _) as oldPlain ], [ (Plain _) as plain ] ) ->
-                                Element.row
-                                    []
-                                    [ Element.el [ Element.alignTop ] (Element.text (variant ++ " "))
-                                    , treeViewDiff oldPlain plain
-                                    ]
+                            ( [ oldSingle ], [ single ] ) ->
+                                if isSingleLine single then
+                                    Element.row
+                                        []
+                                        [ Element.el [ Element.alignTop ] (Element.text (variant ++ " "))
+                                        , treeViewDiff oldSingle single
+                                        ]
+
+                                else
+                                    Element.column
+                                        []
+                                        [ Element.text variant
+                                        , Element.el
+                                            [ Element.moveRight 16 ]
+                                            (treeViewDiff oldSingle single)
+                                        ]
 
                             _ ->
                                 Element.column
                                     []
-                                    [ Element.text (variant ++ " ")
+                                    [ Element.text variant
                                     , Element.column
                                         [ Element.moveRight 16 ]
                                         (List.map2 treeViewDiff oldElmValues elmValues)
@@ -622,16 +632,24 @@ treeView value =
 
                 DebugParser.ElmValue.ElmType variant elmValues ->
                     case elmValues of
-                        [ Plain plain ] ->
-                            Element.row []
-                                [ Element.el [ Element.alignTop ] (Element.text (variant ++ " "))
-                                , plainValueToString plain |> Element.text
-                                ]
+                        [ single ] ->
+                            if isSingleLine single then
+                                Element.row []
+                                    [ Element.el [ Element.alignTop ] (Element.text (variant ++ " "))
+                                    , treeView single
+                                    ]
+
+                            else
+                                Element.column
+                                    []
+                                    [ Element.text variant
+                                    , Element.column [ Element.moveRight 16 ] (List.map treeView elmValues)
+                                    ]
 
                         _ ->
                             Element.column
                                 []
-                                [ Element.text (variant ++ " ")
+                                [ Element.text variant
                                 , Element.column [ Element.moveRight 16 ] (List.map treeView elmValues)
                                 ]
 

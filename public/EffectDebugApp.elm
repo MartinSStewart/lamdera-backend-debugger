@@ -41,7 +41,7 @@ backend backendNoOp sessionName broadcast sendToFrontend { init, update, updateF
                             (Update
                                 { sessionName = sessionName
                                 , msg = Debug.toString msg
-                                , newModel = Debug.toString model
+                                , newModel = Debug.toString newModel
                                 }
                             )
                     ]
@@ -60,7 +60,7 @@ backend backendNoOp sessionName broadcast sendToFrontend { init, update, updateF
                         (UpdateFromFrontend
                             { sessionName = sessionName
                             , msg = Debug.toString msg
-                            , newModel = Debug.toString model
+                            , newModel = Debug.toString newModel
                             , sessionId = Effect.Lamdera.sessionIdToString sessionId
                             , clientId = Effect.Lamdera.clientIdToString clientId
                             }

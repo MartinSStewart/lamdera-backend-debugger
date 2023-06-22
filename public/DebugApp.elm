@@ -52,7 +52,7 @@ backend backendNoOp sessionName { init, update, updateFromFrontend, subscription
                         (Update
                             { sessionName = sessionName
                             , msg = Debug.toString msg
-                            , newModel = Debug.toString model
+                            , newModel = Debug.toString newModel
                             }
                         )
                 ]
@@ -71,7 +71,7 @@ backend backendNoOp sessionName { init, update, updateFromFrontend, subscription
                     (UpdateFromFrontend
                         { sessionName = sessionName
                         , msg = Debug.toString msg
-                        , newModel = Debug.toString model
+                        , newModel = Debug.toString newModel
                         , sessionId = sessionId
                         , clientId = clientId
                         }
