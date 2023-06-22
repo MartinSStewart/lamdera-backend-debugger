@@ -2,6 +2,7 @@ module Types exposing (..)
 
 import Array exposing (Array)
 import AssocList
+import AssocSet
 import Browser exposing (UrlRequest)
 import Browser.Navigation exposing (Key)
 import DebugParser.ElmValue exposing (ElmValue)
@@ -27,7 +28,15 @@ type alias LoadedData =
     , history : Array Event
     , selected : Int
     , filter : String
+    , collapsedFields : AssocSet.Set (List PathNode)
     }
+
+
+type PathNode
+    = FieldNode String
+    | VariantNode String
+    | SequenceNode Int
+    | DictNode ElmValue
 
 
 type alias BackendModel =
@@ -84,6 +93,8 @@ type FrontendMsg
     | PressedResetSession
     | GotRandomSessionName SessionName
     | TypedVariantFilter String
+    | PressedCollapseField (List PathNode)
+    | PressedExpandField (List PathNode)
 
 
 type ToBackend

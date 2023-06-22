@@ -2,6 +2,7 @@ module Frontend exposing (..)
 
 import Array exposing (Array)
 import AssocList
+import AssocSet
 import Browser exposing (UrlRequest(..))
 import Browser.Navigation
 import DebugParser.ElmValue exposing (ElmValue(..), ExpandableValue(..))
@@ -114,6 +115,12 @@ updateLoaded msg model =
         TypedVariantFilter filter ->
             ( { model | filter = filter }, Cmd.none )
 
+        PressedCollapseField path ->
+            ( { model | collapsedFields = AssocSet.insert path model.collapsedFields }, Cmd.none )
+
+        PressedExpandField path ->
+            ( { model | collapsedFields = AssocSet.remove path model.collapsedFields }, Cmd.none )
+
 
 sessionNameToString : SessionName -> String
 sessionNameToString (SessionName sessionName) =
@@ -133,6 +140,7 @@ updateFromBackend msg model =
                         , history = debugSession.history
                         , selected = Array.length debugSession.history - 1
                         , filter = ""
+                        , collapsedFields = AssocSet.empty
                         }
                     , Cmd.none
                     )
@@ -346,7 +354,7 @@ loadedSessionView model =
                             , Element.spacing 4
                             ]
                             [ Element.el [ Element.Font.bold ] (Element.text "New model")
-                            , treeViewDiff previousEvent event
+                            , treeViewDiff [] model.collapsedFields previousEvent event
                             ]
 
                     ( Nothing, Just event ) ->
@@ -387,6 +395,46 @@ charText char =
 
 emptyDict =
     Element.el [ Element.Font.color (Element.rgb 0.4 0.4 0.4) ] (Element.text "<Empty dict>")
+
+
+collapsedValue value =
+    Element.el
+        [ Element.Font.color (Element.rgb 0.4 0.4 0.4) ]
+        (Element.text
+            (case value of
+                Plain plainValue ->
+                    "<primitive>"
+
+                Expandable expandableValue ->
+                    case expandableValue of
+                        ElmSequence sequenceType elmValues ->
+                            let
+                                count =
+                                    String.fromInt (List.length elmValues)
+                            in
+                            case sequenceType of
+                                DebugParser.ElmValue.SeqSet ->
+                                    "<set, " ++ count ++ " items>"
+
+                                DebugParser.ElmValue.SeqList ->
+                                    "<list, " ++ count ++ " items>"
+
+                                DebugParser.ElmValue.SeqArray ->
+                                    "<array, " ++ count ++ " items>"
+
+                                DebugParser.ElmValue.SeqTuple ->
+                                    "<tuple " ++ count ++ ">"
+
+                        ElmType variant elmValues ->
+                            "<custom type, " ++ variant ++ ">"
+
+                        ElmRecord list ->
+                            "<record>"
+
+                        ElmDict list ->
+                            "<dict, " ++ String.fromInt (List.length list) ++ " item>"
+            )
+        )
 
 
 variantText variant =
@@ -490,8 +538,14 @@ isSingleLine elmValue =
                     List.isEmpty dict
 
 
-treeViewDiff : ElmValue -> ElmValue -> Element msg
-treeViewDiff oldValue value =
+indexedMap2 : (Int -> a -> b -> c) -> List a -> List b -> List c
+indexedMap2 func listA listB =
+    List.map2 Tuple.pair listA listB
+        |> List.indexedMap (\index ( a, b ) -> func index a b)
+
+
+treeViewDiff : List PathNode -> AssocSet.Set (List PathNode) -> ElmValue -> ElmValue -> Element FrontendMsg
+treeViewDiff currentPath collapsedFields oldValue value =
     case ( oldValue, value ) of
         ( Plain oldPlainValue, Plain plainValue ) ->
             if plainValue == oldPlainValue then
@@ -536,9 +590,9 @@ treeViewDiff oldValue value =
                                         |> List.map (\a -> Element.el [ oldColor ] (treeView a))
 
                             pairedItems =
-                                List.map2
-                                    (\old new ->
-                                        treeViewDiff old new
+                                indexedMap2
+                                    (\index old new ->
+                                        treeViewDiff (SequenceNode index :: currentPath) collapsedFields old new
                                     )
                                     oldElmValues
                                     elmValues
@@ -576,7 +630,11 @@ treeViewDiff oldValue value =
                                         []
                                         [ Element.el [ Element.alignTop ] (variantText variant)
                                         , Element.text " "
-                                        , treeViewDiff oldSingle single
+                                        , treeViewDiff
+                                            (VariantNode variant :: currentPath)
+                                            collapsedFields
+                                            oldSingle
+                                            single
                                         ]
 
                                 else
@@ -585,7 +643,12 @@ treeViewDiff oldValue value =
                                         [ variantText variant
                                         , Element.el
                                             [ tabAmount ]
-                                            (treeViewDiff oldSingle single)
+                                            (treeViewDiff
+                                                (VariantNode variant :: currentPath)
+                                                collapsedFields
+                                                oldSingle
+                                                single
+                                            )
                                         ]
 
                             _ ->
@@ -594,7 +657,11 @@ treeViewDiff oldValue value =
                                     [ variantText variant
                                     , Element.column
                                         [ tabAmount ]
-                                        (List.map2 treeViewDiff oldElmValues elmValues)
+                                        (List.map2
+                                            (treeViewDiff (VariantNode variant :: currentPath) collapsedFields)
+                                            oldElmValues
+                                            elmValues
+                                        )
                                     ]
 
                     else
@@ -609,18 +676,43 @@ treeViewDiff oldValue value =
                         []
                         (List.map2
                             (\( _, oldElmValue ) ( fieldName, elmValue ) ->
+                                let
+                                    nextPath =
+                                        FieldNode fieldName :: currentPath
+
+                                    isCollapsed =
+                                        AssocSet.member nextPath collapsedFields
+                                in
                                 if isSingleLine elmValue then
                                     Element.row []
                                         [ Element.el [ Element.alignTop ] (Element.text (fieldName ++ ": "))
-                                        , treeViewDiff oldElmValue elmValue
+                                        , treeViewDiff nextPath collapsedFields oldElmValue elmValue
+                                        ]
+
+                                else if isCollapsed then
+                                    Element.row []
+                                        [ Element.Input.button
+                                            [ Element.alignTop ]
+                                            { onPress = PressedExpandField nextPath |> Just
+                                            , label = Element.text (fieldName ++ ": ")
+                                            }
+                                        , if oldElmValue == elmValue then
+                                            collapsedValue elmValue
+
+                                          else
+                                            Element.el [ newColor ] (collapsedValue elmValue)
                                         ]
 
                                 else
                                     Element.column []
-                                        [ Element.text (fieldName ++ ": ")
+                                        [ Element.Input.button
+                                            []
+                                            { onPress = PressedCollapseField nextPath |> Just
+                                            , label = Element.text (fieldName ++ ": ")
+                                            }
                                         , Element.el
                                             [ tabAmount ]
-                                            (treeViewDiff oldElmValue elmValue)
+                                            (treeViewDiff nextPath collapsedFields oldElmValue elmValue)
                                         ]
                             )
                             oldRecord
@@ -653,7 +745,9 @@ treeViewDiff oldValue value =
                                         Element.column
                                             []
                                             [ Element.row [] [ treeView key, Element.text ": " ]
-                                            , Element.el [ tabAmount ] (treeViewDiff old new)
+                                            , Element.el
+                                                [ tabAmount ]
+                                                (treeViewDiff (DictNode key :: currentPath) collapsedFields old new)
                                             ]
                                             :: state
                                     )

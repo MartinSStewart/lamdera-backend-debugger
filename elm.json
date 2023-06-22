@@ -16,6 +16,7 @@
             "elm/random": "1.0.0",
             "elm/url": "1.0.0",
             "elm-community/list-extra": "8.7.0",
+            "erlandsona/assoc-set": "1.1.2",
             "f0i/debug-to-json": "1.0.6",
             "jinjor/elm-diff": "1.0.6",
             "lamdera/codecs": "1.0.0",
