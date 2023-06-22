@@ -152,9 +152,9 @@ refineElmValue value =
             value
 
         Expandable expandableValue ->
-            case expandableValue of
+            (case expandableValue of
                 ElmSequence sequenceType elmValues ->
-                    value
+                    List.map refineElmValue elmValues |> ElmSequence sequenceType
 
                 ElmType variant elmValues ->
                     case ( variant, elmValues ) of
@@ -163,23 +163,25 @@ refineElmValue value =
                                 (\a ->
                                     case a of
                                         Expandable (ElmSequence SeqTuple [ key, value2 ]) ->
-                                            Just ( key, value2 )
+                                            Just ( refineElmValue key, refineElmValue value2 )
 
                                         _ ->
                                             Nothing
                                 )
                                 list
                                 |> ElmDict
-                                |> Expandable
 
                         _ ->
-                            value
+                            ElmType variant (List.map refineElmValue elmValues)
 
-                ElmRecord list ->
-                    value
+                ElmRecord fields ->
+                    List.map (\( field, value2 ) -> ( field, refineElmValue value2 )) fields |> ElmRecord
 
                 ElmDict list ->
-                    value
+                    List.map (\( key, value2 ) -> ( refineElmValue key, refineElmValue value2 )) list
+                        |> ElmDict
+            )
+                |> Expandable
 
 
 updateSession :
