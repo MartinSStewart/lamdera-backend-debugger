@@ -223,7 +223,18 @@ view model =
     , body =
         [ Html.node "style" [] [ Html.text css ]
         , Element.layout
-            [ Element.Font.size 16 ]
+            [ Element.Font.size 16
+            , Element.inFront
+                (Element.el
+                    [ Element.alignBottom
+                    , Element.alignRight
+                    , Element.padding 8
+                    , Element.Font.size 20
+                    , Element.Background.color (Element.rgb 1 1 1)
+                    ]
+                    (link "https://github.com/MartinSStewart/lamdera-backend-debugger" "View source code")
+                )
+            ]
             (case model of
                 LoadingSession _ ->
                     Element.none
