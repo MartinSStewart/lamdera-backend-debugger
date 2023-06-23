@@ -2,6 +2,7 @@ module Backend exposing (..)
 
 import Array
 import AssocList as Dict
+import AssocSet
 import DebugParser.ElmValue exposing (ElmValue(..), ExpandableValue(..), PlainValue(..), SequenceType(..))
 import Html
 import Lamdera exposing (ClientId, SessionId)
@@ -112,6 +113,7 @@ init =
                         ]
                             |> Array.fromList
                     , connections = Set.empty
+                    , settings = { filter = "", collapsedFields = AssocSet.empty }
                     }
                   )
                 ]
@@ -161,6 +163,7 @@ updateFromFrontend sessionId clientId msg model =
                             , initialCmd = Nothing
                             , history = Array.empty
                             , connections = Set.singleton clientId
+                            , settings = { filter = "", collapsedFields = AssocSet.empty }
                             }
                     in
                     ( { model | sessions = Dict.insert sessionName session model.sessions }
@@ -176,13 +179,31 @@ updateFromFrontend sessionId clientId msg model =
                                 | sessions =
                                     Dict.insert
                                         sessionName
-                                        { session | history = Array.empty, initialModel = Nothing }
+                                        { session | history = Array.empty, initialModel = Nothing, initialCmd = Nothing }
                                         model.sessions
                             }
                     in
                     ( model2
                     , RPC.broadcastToClients sessionName ResetSession model2
                     )
+
+                Nothing ->
+                    ( model, Cmd.none )
+
+        SetSessionSettingsRequest settings ->
+            case getSessionByClientId clientId model of
+                Just ( sessionName, session ) ->
+                    let
+                        model2 =
+                            { model
+                                | sessions =
+                                    Dict.insert
+                                        sessionName
+                                        { session | settings = settings }
+                                        model.sessions
+                            }
+                    in
+                    ( model2, Cmd.none )
 
                 Nothing ->
                     ( model, Cmd.none )

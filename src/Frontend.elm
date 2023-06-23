@@ -15,10 +15,12 @@ import Env
 import Html
 import Html.Attributes
 import Lamdera
+import Process
 import Random
 import Set exposing (Set)
 import Sha256
 import SyntaxHighlight
+import Task
 import Types exposing (..)
 import Url
 import Url.Parser
@@ -110,13 +112,31 @@ updateLoaded msg model =
             ( model, Cmd.none )
 
         TypedVariantFilter filter ->
-            ( { model | filter = filter }, Cmd.none )
+            updateSettings (\settings -> { settings | filter = filter }) model
 
         PressedCollapseField path ->
-            ( { model | collapsedFields = AssocSet.insert path model.collapsedFields }, Cmd.none )
+            updateSettings
+                (\settings -> { settings | collapsedFields = AssocSet.insert path settings.collapsedFields })
+                model
 
         PressedExpandField path ->
-            ( { model | collapsedFields = AssocSet.remove path model.collapsedFields }, Cmd.none )
+            updateSettings
+                (\settings -> { settings | collapsedFields = AssocSet.remove path settings.collapsedFields })
+                model
+
+        DebounceFinished counter ->
+            if counter == model.debounceCounter then
+                ( model, Lamdera.sendToBackend (SetSessionSettingsRequest model.settings) )
+
+            else
+                ( model, Cmd.none )
+
+
+updateSettings : (DebugSessionSettings -> DebugSessionSettings) -> LoadedData -> ( LoadedData, Cmd FrontendMsg )
+updateSettings func model =
+    ( { model | settings = func model.settings, debounceCounter = model.debounceCounter + 1 }
+    , Process.sleep 1000 |> Task.perform (\() -> DebounceFinished (model.debounceCounter + 1))
+    )
 
 
 sessionNameToString : SessionName -> String
@@ -137,8 +157,8 @@ updateFromBackend msg model =
                         , initialCmd = debugSession.initialCmd
                         , history = debugSession.history
                         , selected = Array.length debugSession.history - 1
-                        , filter = ""
-                        , collapsedFields = AssocSet.empty
+                        , settings = debugSession.settings
+                        , debounceCounter = 0
                         }
                     , Cmd.none
                     )
@@ -282,7 +302,7 @@ loadedSessionView model =
     let
         filter : Set String
         filter =
-            String.split "," model.filter |> List.map String.trim |> Set.fromList
+            String.split "," model.settings.filter |> List.map String.trim |> Set.fromList
     in
     if Array.isEmpty model.history && model.initialModel == Nothing then
         instructionView model.sessionName
@@ -301,7 +321,7 @@ loadedSessionView model =
                         }
                     , Element.Input.text
                         [ Element.padding 4, Element.width Element.fill, Element.spacing 0 ]
-                        { text = model.filter
+                        { text = model.settings.filter
                         , onChange = TypedVariantFilter
                         , placeholder = Nothing
                         , label =
@@ -371,7 +391,7 @@ loadedSessionView model =
                             , Element.spacing 4
                             ]
                             [ Element.el [ Element.Font.bold ] (Element.text "New model")
-                            , treeViewDiff [] model.collapsedFields previousEvent event
+                            , treeViewDiff [] model.settings.collapsedFields previousEvent event
                             ]
 
                     ( Nothing, Just event ) ->

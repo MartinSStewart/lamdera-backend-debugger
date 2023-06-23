@@ -2,6 +2,7 @@ module RPC exposing (..)
 
 import Array
 import AssocList as Dict
+import AssocSet
 import DebugParser
 import DebugParser.ElmValue exposing (ElmValue(..), ExpandableValue(..), SequenceType(..))
 import Http
@@ -211,6 +212,7 @@ updateSession dataType sessionName func model =
                         , initialCmd = Nothing
                         , history = Array.empty
                         , connections = Set.empty
+                        , settings = { filter = "", collapsedFields = AssocSet.empty }
                         }
                         maybeSession
                         |> func

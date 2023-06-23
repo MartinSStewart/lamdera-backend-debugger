@@ -28,8 +28,8 @@ type alias LoadedData =
     , initialCmd : Maybe ElmValue
     , history : Array Event
     , selected : Int
-    , filter : String
-    , collapsedFields : AssocSet.Set (List PathNode)
+    , settings : DebugSessionSettings
+    , debounceCounter : Int
     }
 
 
@@ -78,6 +78,13 @@ type alias DebugSession =
     , initialCmd : Maybe ElmValue
     , history : Array Event
     , connections : Set ClientId
+    , settings : DebugSessionSettings
+    }
+
+
+type alias DebugSessionSettings =
+    { filter : String
+    , collapsedFields : AssocSet.Set (List PathNode)
     }
 
 
@@ -103,11 +110,13 @@ type FrontendMsg
     | TypedVariantFilter String
     | PressedCollapseField (List PathNode)
     | PressedExpandField (List PathNode)
+    | DebounceFinished Int
 
 
 type ToBackend
     = LoadSessionRequest SessionName
     | ResetSessionRequest
+    | SetSessionSettingsRequest DebugSessionSettings
 
 
 type BackendMsg
