@@ -4,11 +4,15 @@ import Array
 import AssocList as Dict
 import AssocSet
 import DebugParser.ElmValue exposing (ElmValue(..), ExpandableValue(..), PlainValue(..), SequenceType(..))
+import Duration
 import Html
 import Lamdera exposing (ClientId, SessionId)
 import List.Extra as List
+import Quantity
 import RPC
 import Set
+import Task
+import Time
 import Types exposing (..)
 
 
@@ -23,7 +27,7 @@ app =
         { init = init
         , update = update
         , updateFromFrontend = updateFromFrontend
-        , subscriptions = \m -> Sub.none
+        , subscriptions = \_ -> Time.every (1000 * 60 * 60) HourlyCheck
         }
 
 
@@ -114,6 +118,7 @@ init =
                             |> Array.fromList
                     , connections = Set.empty
                     , settings = { filter = "", collapsedFields = AssocSet.empty }
+                    , lastChange = Time.millisToPosix 1000000000000
                     }
                   )
                 ]
@@ -138,9 +143,33 @@ update msg model =
             , Cmd.none
             )
 
+        GotTime sessionId clientId toBackend time ->
+            updateFromFrontendWithTime time sessionId clientId toBackend model
+
+        HourlyCheck time ->
+            ( { model
+                | sessions =
+                    Dict.filter
+                        (\_ session ->
+                            Duration.from session.lastChange time
+                                |> Quantity.lessThan Duration.day
+                        )
+                        model.sessions
+              }
+            , Cmd.none
+            )
+
+        GotTimeForDataEndpoint sessionId dataType time ->
+            RPC.dataEndpointWithTime time sessionId model dataType
+
 
 updateFromFrontend : SessionId -> ClientId -> ToBackend -> BackendModel -> ( BackendModel, Cmd BackendMsg )
-updateFromFrontend sessionId clientId msg model =
+updateFromFrontend sessionId clientId toBackend model =
+    ( model, Time.now |> Task.perform (GotTime sessionId clientId toBackend) )
+
+
+updateFromFrontendWithTime : Time.Posix -> SessionId -> ClientId -> ToBackend -> BackendModel -> ( BackendModel, Cmd BackendMsg )
+updateFromFrontendWithTime time sessionId clientId msg model =
     case msg of
         LoadSessionRequest sessionName ->
             case Dict.get sessionName model.sessions of
@@ -149,7 +178,10 @@ updateFromFrontend sessionId clientId msg model =
                         | sessions =
                             Dict.insert
                                 sessionName
-                                { session | connections = Set.insert clientId session.connections }
+                                { session
+                                    | connections = Set.insert clientId session.connections
+                                    , lastChange = time
+                                }
                                 model.sessions
                       }
                     , Lamdera.sendToFrontend clientId (LoadSessionResponse session)
@@ -164,6 +196,7 @@ updateFromFrontend sessionId clientId msg model =
                             , history = Array.empty
                             , connections = Set.singleton clientId
                             , settings = { filter = "", collapsedFields = AssocSet.empty }
+                            , lastChange = time
                             }
                     in
                     ( { model | sessions = Dict.insert sessionName session model.sessions }
@@ -179,7 +212,12 @@ updateFromFrontend sessionId clientId msg model =
                                 | sessions =
                                     Dict.insert
                                         sessionName
-                                        { session | history = Array.empty, initialModel = Nothing, initialCmd = Nothing }
+                                        { session
+                                            | history = Array.empty
+                                            , initialModel = Nothing
+                                            , initialCmd = Nothing
+                                            , lastChange = time
+                                        }
                                         model.sessions
                             }
                     in
@@ -199,7 +237,7 @@ updateFromFrontend sessionId clientId msg model =
                                 | sessions =
                                     Dict.insert
                                         sessionName
-                                        { session | settings = settings }
+                                        { session | settings = settings, lastChange = time }
                                         model.sessions
                             }
                     in

@@ -13,6 +13,7 @@ import Lamdera.Wire3 as Wire3
 import LamderaRPC
 import Set
 import Task exposing (Task)
+import Time
 import Types exposing (BackendModel, BackendMsg(..), DataType(..), DebugSession, Event(..), Init_, SessionName(..), ToFrontend(..), UpdateFromFrontend_, Update_)
 
 
@@ -90,61 +91,13 @@ dataEndpoint :
     -> BackendModel
     -> Json.Decode.Value
     -> ( Result Http.Error Json.Decode.Value, BackendModel, Cmd BackendMsg )
-dataEndpoint _ model request =
+dataEndpoint sessionId model request =
     case Json.Decode.decodeValue decodeDataType request of
         Ok dataType ->
-            case dataType of
-                UpdateFromFrontend data ->
-                    updateSession
-                        dataType
-                        data.sessionName
-                        (\session ->
-                            { session
-                                | history =
-                                    Array.push
-                                        (ToBackendEvent
-                                            { sessionId = data.sessionId
-                                            , clientId = data.clientId
-                                            , msg = data.msg
-                                            , newModel = data.newModel
-                                            , cmd = data.maybeCmd
-                                            }
-                                        )
-                                        session.history
-                            }
-                        )
-                        model
-
-                Init data ->
-                    updateSession
-                        dataType
-                        data.sessionName
-                        (\session ->
-                            { session
-                                | initialModel = Just data.model
-                                , history = Array.empty
-                            }
-                        )
-                        model
-
-                Update data ->
-                    updateSession
-                        dataType
-                        data.sessionName
-                        (\session ->
-                            { session
-                                | history =
-                                    Array.push
-                                        (BackendMsgEvent
-                                            { msg = data.msg
-                                            , newModel = data.newModel
-                                            , cmd = data.maybeCmd
-                                            }
-                                        )
-                                        session.history
-                            }
-                        )
-                        model
+            ( Ok Json.Encode.null
+            , model
+            , Time.now |> Task.perform (GotTimeForDataEndpoint sessionId dataType)
+            )
 
         Err error ->
             let
@@ -153,6 +106,70 @@ dataEndpoint _ model request =
                         ++ Json.Decode.errorToString error
             in
             ( Err (Http.BadBody errorText), model, Cmd.none )
+
+
+dataEndpointWithTime :
+    Time.Posix
+    -> SessionId
+    -> BackendModel
+    -> DataType
+    -> ( BackendModel, Cmd BackendMsg )
+dataEndpointWithTime time _ model dataType =
+    case dataType of
+        UpdateFromFrontend data ->
+            updateSession
+                time
+                dataType
+                data.sessionName
+                (\session ->
+                    { session
+                        | history =
+                            Array.push
+                                (ToBackendEvent
+                                    { sessionId = data.sessionId
+                                    , clientId = data.clientId
+                                    , msg = data.msg
+                                    , newModel = data.newModel
+                                    , cmd = data.maybeCmd
+                                    }
+                                )
+                                session.history
+                    }
+                )
+                model
+
+        Init data ->
+            updateSession
+                time
+                dataType
+                data.sessionName
+                (\session ->
+                    { session
+                        | initialModel = Just data.model
+                        , history = Array.empty
+                    }
+                )
+                model
+
+        Update data ->
+            updateSession
+                time
+                dataType
+                data.sessionName
+                (\session ->
+                    { session
+                        | history =
+                            Array.push
+                                (BackendMsgEvent
+                                    { msg = data.msg
+                                    , newModel = data.newModel
+                                    , cmd = data.maybeCmd
+                                    }
+                                )
+                                session.history
+                    }
+                )
+                model
 
 
 refineElmValue : ElmValue -> ElmValue
@@ -195,14 +212,14 @@ refineElmValue value =
 
 
 updateSession :
-    DataType
+    Time.Posix
+    -> DataType
     -> SessionName
     -> (DebugSession -> DebugSession)
     -> BackendModel
-    -> ( Result error Json.Encode.Value, BackendModel, Cmd BackendMsg )
-updateSession dataType sessionName func model =
-    ( Ok Json.Encode.null
-    , { model
+    -> ( BackendModel, Cmd BackendMsg )
+updateSession time dataType sessionName func model =
+    ( { model
         | sessions =
             Dict.update
                 sessionName
@@ -213,6 +230,7 @@ updateSession dataType sessionName func model =
                         , history = Array.empty
                         , connections = Set.empty
                         , settings = { filter = "", collapsedFields = AssocSet.empty }
+                        , lastChange = time
                         }
                         maybeSession
                         |> func

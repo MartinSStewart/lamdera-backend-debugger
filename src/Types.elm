@@ -7,8 +7,10 @@ import Browser exposing (UrlRequest)
 import Browser.Navigation exposing (Key)
 import DebugParser.ElmValue exposing (ElmValue)
 import Dict exposing (Dict)
+import Json.Decode
 import Lamdera exposing (ClientId, SessionId)
 import Set exposing (Set)
+import Time
 import Url exposing (Url)
 
 
@@ -79,6 +81,7 @@ type alias DebugSession =
     , history : Array Event
     , connections : Set ClientId
     , settings : DebugSessionSettings
+    , lastChange : Time.Posix
     }
 
 
@@ -122,6 +125,9 @@ type ToBackend
 type BackendMsg
     = NoOpBackendMsg
     | ClientDisconnected SessionId ClientId
+    | GotTime SessionId ClientId ToBackend Time.Posix
+    | HourlyCheck Time.Posix
+    | GotTimeForDataEndpoint SessionId DataType Time.Posix
 
 
 type ToFrontend
