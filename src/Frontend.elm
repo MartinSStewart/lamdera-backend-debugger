@@ -943,21 +943,48 @@ treeView value =
 
 dictKey : ElmValue -> Element msg
 dictKey elmValue =
-    if isSingleLine elmValue then
-        Element.row [] [ treeView elmValue, Element.text ":" ]
+    let
+        row () =
+            Element.row [] [ treeView elmValue, Element.text ":" ]
 
-    else
-        Element.row
-            [ Element.spacing 8 ]
-            [ treeView elmValue
-            , Element.el
-                [ Element.Border.widthEach { left = 2, right = 0, top = 0, bottom = 0 }
-                , Element.height Element.fill
-                , Element.Border.color (Element.rgb 0.4 0.4 0.4)
-                , Element.Font.color (Element.rgb 0.4 0.4 0.4)
+        column () =
+            Element.row
+                [ Element.spacing 8 ]
+                [ treeView elmValue
+                , Element.el
+                    [ Element.Border.widthEach { left = 2, right = 0, top = 0, bottom = 0 }
+                    , Element.height Element.fill
+                    , Element.Border.color (Element.rgb 0.4 0.4 0.4)
+                    , Element.Font.color (Element.rgb 0.4 0.4 0.4)
+                    ]
+                    (Element.el [ Element.centerY ] (Element.text "(key)"))
                 ]
-                (Element.el [ Element.centerY ] (Element.text "(key)"))
-            ]
+    in
+    case elmValue of
+        Plain _ ->
+            row ()
+
+        Expandable expandable ->
+            case expandable of
+                ElmSequence _ _ ->
+                    column ()
+
+                ElmType variant elmValues ->
+                    case elmValues of
+                        [] ->
+                            row ()
+
+                        [ Plain _ ] ->
+                            row ()
+
+                        _ ->
+                            column ()
+
+                ElmRecord _ ->
+                    column ()
+
+                ElmDict _ ->
+                    column ()
 
 
 getModel :

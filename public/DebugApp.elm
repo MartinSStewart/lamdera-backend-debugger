@@ -91,7 +91,7 @@ type DataType
 sendToViewer : msg -> DataType -> Cmd msg
 sendToViewer backendNoOp data =
     Http.post
-        { url = "https://backend-debugger.lamdera.app/_r/data"
+        { url = "http://localhost:8001/https://backend-debugger.lamdera.app/_r/data"
         , body = Http.jsonBody (encodeDataType data)
         , expect = Http.expectWhatever (\_ -> backendNoOp)
         }

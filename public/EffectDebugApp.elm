@@ -82,7 +82,7 @@ type DataType
 sendToViewer : msg -> DataType -> Command BackendOnly toFrontend msg
 sendToViewer backendNoOp data =
     Effect.Http.post
-        { url = "https://backend-debugger.lamdera.app/_r/data"
+        { url = "http://localhost:8001/https://backend-debugger.lamdera.app/_r/data"
         , body = Effect.Http.jsonBody (encodeDataType data)
         , expect = Effect.Http.expectWhatever (\_ -> backendNoOp)
         }
