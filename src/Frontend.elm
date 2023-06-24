@@ -457,22 +457,18 @@ collapsedValue value =
                 Expandable expandableValue ->
                     case expandableValue of
                         ElmSequence sequenceType elmValues ->
-                            let
-                                count =
-                                    String.fromInt (List.length elmValues)
-                            in
                             case sequenceType of
                                 DebugParser.ElmValue.SeqSet ->
-                                    "<set, " ++ count ++ " items>"
+                                    "<set, " ++ items (List.length elmValues)
 
                                 DebugParser.ElmValue.SeqList ->
-                                    "<list, " ++ count ++ " items>"
+                                    "<list, " ++ items (List.length elmValues)
 
                                 DebugParser.ElmValue.SeqArray ->
-                                    "<array, " ++ count ++ " items>"
+                                    "<array, " ++ items (List.length elmValues)
 
                                 DebugParser.ElmValue.SeqTuple ->
-                                    "<tuple " ++ count ++ ">"
+                                    "<tuple " ++ String.fromInt (List.length elmValues) ++ ">"
 
                         ElmType variant elmValues ->
                             "<custom type, " ++ variant ++ ">"
@@ -481,9 +477,18 @@ collapsedValue value =
                             "<record>"
 
                         ElmDict list ->
-                            "<dict, " ++ String.fromInt (List.length list) ++ " item>"
+                            "<dict, " ++ items (List.length list)
             )
         )
+
+
+items : Int -> String
+items count =
+    if count == 1 then
+        "1 item>"
+
+    else
+        String.fromInt count ++ "items>"
 
 
 variantText variant =
@@ -785,7 +790,7 @@ treeViewDiff currentPath collapsedFields oldValue value =
                                     (\key old state ->
                                         Element.column
                                             [ oldColor ]
-                                            [ Element.row [] [ treeView key, Element.text ": " ]
+                                            [ dictKey key
                                             , Element.el [ tabAmount ] (treeView old)
                                             ]
                                             :: state
@@ -793,7 +798,7 @@ treeViewDiff currentPath collapsedFields oldValue value =
                                     (\key old new state ->
                                         Element.column
                                             []
-                                            [ Element.row [] [ treeView key, Element.text ": " ]
+                                            [ dictKey key
                                             , Element.el
                                                 [ tabAmount ]
                                                 (treeViewDiff (DictNode key :: currentPath) collapsedFields old new)
@@ -803,7 +808,7 @@ treeViewDiff currentPath collapsedFields oldValue value =
                                     (\key new state ->
                                         Element.column
                                             [ newColor ]
-                                            [ Element.row [] [ treeView key, Element.text ": " ]
+                                            [ dictKey key
                                             , Element.el [ tabAmount ] (treeView new)
                                             ]
                                             :: state
@@ -928,12 +933,31 @@ treeView value =
                                 (\( key, value2 ) ->
                                     Element.column
                                         []
-                                        [ Element.row [ Element.alignTop ] [ treeView key, Element.text ": " ]
+                                        [ dictKey key
                                         , Element.el [ tabAmount ] (treeView value2)
                                         ]
                                 )
                                 dict
                             )
+
+
+dictKey : ElmValue -> Element msg
+dictKey elmValue =
+    if isSingleLine elmValue then
+        Element.row [] [ treeView elmValue, Element.text ":" ]
+
+    else
+        Element.row
+            [ Element.spacing 8 ]
+            [ treeView elmValue
+            , Element.el
+                [ Element.Border.widthEach { left = 2, right = 0, top = 0, bottom = 0 }
+                , Element.height Element.fill
+                , Element.Border.color (Element.rgb 0.4 0.4 0.4)
+                , Element.Font.color (Element.rgb 0.4 0.4 0.4)
+                ]
+                (Element.el [ Element.centerY ] (Element.text "(key)"))
+            ]
 
 
 getModel :

@@ -62,11 +62,21 @@ init =
                                     , ( "abc123"
                                       , Expandable
                                             (ElmDict
-                                                [ ( Plain (ElmString "asdf123")
-                                                  , Plain (ElmNumber 4)
+                                                [ ( Expandable
+                                                        (ElmRecord
+                                                            [ ( "a", Plain (ElmString "asdf1") )
+                                                            , ( "b", Plain (ElmString "asdf1") )
+                                                            ]
+                                                        )
+                                                  , Plain (ElmNumber 3)
                                                   )
-                                                , ( Plain (ElmString "a")
-                                                  , Plain (ElmNumber 4)
+                                                , ( Expandable
+                                                        (ElmRecord
+                                                            [ ( "a", Plain (ElmString "asdf13") )
+                                                            , ( "b", Plain (ElmString "asdf13") )
+                                                            ]
+                                                        )
+                                                  , Plain (ElmNumber 3)
                                                   )
                                                 ]
                                             )
@@ -102,11 +112,13 @@ init =
                                         , ( "abc123"
                                           , Expandable
                                                 (ElmDict
-                                                    [ ( Plain (ElmString "asdf123")
+                                                    [ ( Expandable
+                                                            (ElmRecord
+                                                                [ ( "a", Plain (ElmString "asdf13") )
+                                                                , ( "b", Plain (ElmString "asdf13") )
+                                                                ]
+                                                            )
                                                       , Plain (ElmNumber 3)
-                                                      )
-                                                    , ( Plain (ElmString "b")
-                                                      , Plain (ElmNumber 4)
                                                       )
                                                     ]
                                                 )
