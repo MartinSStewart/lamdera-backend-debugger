@@ -505,7 +505,7 @@ items count =
         "1 item>"
 
     else
-        String.fromInt count ++ "items>"
+        String.fromInt count ++ " items>"
 
 
 variantText variant =
