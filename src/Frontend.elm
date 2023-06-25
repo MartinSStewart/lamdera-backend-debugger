@@ -171,7 +171,12 @@ updateFromBackend msg model =
                 LoadedSession loaded ->
                     case dataType of
                         Init init_ ->
-                            LoadedSession { loaded | initialModel = Just init_.model, history = Array.empty }
+                            LoadedSession
+                                { loaded
+                                    | initialModel = Just init_.model
+                                    , history = Array.empty
+                                    , selected = 0
+                                }
 
                         Update update_ ->
                             LoadedSession
@@ -185,6 +190,12 @@ updateFromBackend msg model =
                                                 }
                                             )
                                             loaded.history
+                                    , selected =
+                                        if loaded.selected == Array.length loaded.history - 1 then
+                                            loaded.selected + 1
+
+                                        else
+                                            loaded.selected
                                 }
 
                         UpdateFromFrontend update_ ->
@@ -201,6 +212,12 @@ updateFromBackend msg model =
                                                 }
                                             )
                                             loaded.history
+                                    , selected =
+                                        if loaded.selected == Array.length loaded.history - 1 then
+                                            loaded.selected + 1
+
+                                        else
+                                            loaded.selected
                                 }
 
                 _ ->
@@ -470,8 +487,8 @@ collapsedValue value =
                                 DebugParser.ElmValue.SeqTuple ->
                                     "<tuple " ++ String.fromInt (List.length elmValues) ++ ">"
 
-                        ElmType variant elmValues ->
-                            "<custom type, " ++ variant ++ ">"
+                        ElmType variant _ ->
+                            "<" ++ variant ++ ">"
 
                         ElmRecord list ->
                             "<record>"
@@ -1060,12 +1077,12 @@ eventView selected index event =
         (case event of
             BackendMsgEvent { msg } ->
                 { onPress = Just (PressedEvent index)
-                , label = Element.row [] [ Element.text (String.fromInt index ++ ". "), singleLineView msg ]
+                , label = Element.row [] [ Element.text (String.fromInt (index + 1) ++ ". "), singleLineView msg ]
                 }
 
             ToBackendEvent { msg } ->
                 { onPress = Just (PressedEvent index)
-                , label = Element.row [] [ Element.text (String.fromInt index ++ ". "), singleLineView msg ]
+                , label = Element.row [] [ Element.text (String.fromInt (index + 1) ++ ". "), singleLineView msg ]
                 }
         )
 
