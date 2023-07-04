@@ -391,6 +391,7 @@ loadedSessionView model =
               Element.column
                 [ Element.width Element.fill
                 , Element.height (Element.minimum 0 Element.fill)
+                , Element.scrollbars
                 ]
                 [ Element.column
                     [ Element.width Element.fill

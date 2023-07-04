@@ -114,7 +114,7 @@ init =
                                                 (ElmDict
                                                     [ ( Expandable
                                                             (ElmRecord
-                                                                [ ( "a", Plain (ElmString "asdf13") )
+                                                                [ ( "a", Plain (ElmString "asdf1311111111111111111111111111111") )
                                                                 , ( "b", Plain (ElmString "asdf13") )
                                                                 ]
                                                             )
