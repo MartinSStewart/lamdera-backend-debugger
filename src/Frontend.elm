@@ -337,9 +337,18 @@ loadedSessionView model =
 
     else
         Element.row
-            [ Element.width Element.fill, Element.height Element.fill, Element.padding 8 ]
+            [ Element.width Element.fill
+            , Element.height (Element.minimum 0 Element.fill)
+            , Element.padding 8
+            , Element.scrollbars
+            ]
             [ Element.column
-                [ Element.alignTop, Element.spacing 8, Element.width (Element.px 380) ]
+                [ Element.alignTop
+                , Element.spacing 8
+                , Element.width (Element.px 380)
+                , Element.scrollbars
+                , Element.height (Element.minimum 0 Element.fill)
+                ]
                 [ Element.row
                     [ Element.spacing 4, Element.width Element.fill ]
                     [ Element.Input.button
@@ -362,7 +371,11 @@ loadedSessionView model =
                         }
                     ]
                 , Element.column
-                    [ Element.Background.color (Element.rgb 0.9 0.9 0.9), Element.width Element.fill ]
+                    [ Element.Background.color (Element.rgb 0.9 0.9 0.9)
+                    , Element.width Element.fill
+                    , Element.height (Element.minimum 0 Element.fill)
+                    , Element.scrollbars
+                    ]
                     (List.indexedMap Tuple.pair (Array.toList model.history)
                         |> List.filterMap
                             (\( index, event ) ->
@@ -374,66 +387,76 @@ loadedSessionView model =
                             )
                     )
                 ]
-            , Element.column
+            , -- I don't understand why but this extra column is necessary for scrolling to work
+              Element.column
                 [ Element.width Element.fill
-                , Element.height Element.fill
-                , Element.padding 8
-                , Element.spacing 16
+                , Element.height (Element.minimum 0 Element.fill)
                 ]
-                [ case Array.get model.selected model.history of
-                    Just event ->
-                        Element.column
-                            [ Element.Font.family [ Element.Font.monospace ], Element.spacing 4 ]
-                            [ Element.el
-                                [ Element.Font.bold ]
-                                (case event of
-                                    ToBackendEvent _ ->
-                                        Element.text "ToBackend"
+                [ Element.column
+                    [ Element.width Element.fill
+                    , Element.height (Element.minimum 0 Element.fill)
+                    , Element.padding 8
+                    , Element.spacing 16
+                    , Element.scrollbars
+                    ]
+                    [ case Array.get model.selected model.history of
+                        Just event ->
+                            Element.column
+                                [ Element.Font.family [ Element.Font.monospace ], Element.spacing 4 ]
+                                [ Element.el
+                                    [ Element.Font.bold ]
+                                    (case event of
+                                        ToBackendEvent _ ->
+                                            Element.text "ToBackend"
 
-                                    BackendMsgEvent _ ->
-                                        Element.text "BackendMsg"
-                                )
-                            , treeView (eventMsg event)
-                            ]
+                                        BackendMsgEvent _ ->
+                                            Element.text "BackendMsg"
+                                    )
+                                , treeView (eventMsg event)
+                                ]
 
-                    Nothing ->
-                        Element.none
-                , case getCmd model.selected model of
-                    Just cmd ->
-                        Element.column
-                            [ Element.width Element.fill
-                            , Element.Font.family [ Element.Font.monospace ]
-                            , Element.spacing 4
-                            ]
-                            [ Element.el [ Element.Font.bold ] (Element.text "Cmd")
-                            , treeView cmd
-                            ]
+                        Nothing ->
+                            Element.none
+                    , case getCmd model.selected model of
+                        Just cmd ->
+                            Element.column
+                                [ Element.width Element.fill
+                                , Element.Font.family [ Element.Font.monospace ]
+                                , Element.spacing 4
+                                ]
+                                [ Element.el [ Element.Font.bold ] (Element.text "Cmd")
+                                , treeView cmd
+                                ]
 
-                    Nothing ->
-                        Element.none
-                , case ( getModel (model.selected - 1) model, getModel model.selected model ) of
-                    ( Just previousEvent, Just event ) ->
-                        Element.column
-                            [ Element.width Element.fill
-                            , Element.Font.family [ Element.Font.monospace ]
-                            , Element.spacing 4
-                            ]
-                            [ Element.el [ Element.Font.bold ] (Element.text "New model")
-                            , treeViewDiff [] model.settings.collapsedFields previousEvent event
-                            ]
+                        Nothing ->
+                            Element.none
+                    , case ( getModel (model.selected - 1) model, getModel model.selected model ) of
+                        ( Just previousEvent, Just event ) ->
+                            Element.column
+                                [ Element.width Element.fill
+                                , Element.Font.family [ Element.Font.monospace ]
+                                , Element.spacing 4
 
-                    ( Nothing, Just event ) ->
-                        Element.column
-                            [ Element.width Element.fill
-                            , Element.Font.family [ Element.Font.monospace ]
-                            , Element.spacing 4
-                            ]
-                            [ Element.el [ Element.Font.bold ] (Element.text "New model (initial model missing, no diff available)")
-                            , treeView event
-                            ]
+                                --, Element.height (Element.minimum 0 Element.fill)
+                                --, Element.scrollbars
+                                ]
+                                [ Element.el [ Element.Font.bold ] (Element.text "New model")
+                                , treeViewDiff [] model.settings.collapsedFields previousEvent event
+                                ]
 
-                    _ ->
-                        Element.none
+                        ( Nothing, Just event ) ->
+                            Element.column
+                                [ Element.width Element.fill
+                                , Element.Font.family [ Element.Font.monospace ]
+                                , Element.spacing 4
+                                ]
+                                [ Element.el [ Element.Font.bold ] (Element.text "New model (initial model missing, no diff available)")
+                                , treeView event
+                                ]
+
+                        _ ->
+                            Element.none
+                    ]
                 ]
             ]
 
@@ -1064,7 +1087,6 @@ eventView selected index event =
         ([ Element.paddingXY 4 0
          , Element.height (Element.px 28)
          , Element.Font.size 14
-         , Element.clip
          , Element.width Element.fill
          ]
             ++ (if selected == index then

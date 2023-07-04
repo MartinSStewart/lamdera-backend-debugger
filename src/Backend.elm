@@ -85,7 +85,7 @@ init =
                                 )
                             )
                     , history =
-                        [ BackendMsgEvent
+                        BackendMsgEvent
                             { msg =
                                 Expandable
                                     (ElmType "Blah" [ Plain (ElmNumber 4), Plain (ElmNumber 4) ])
@@ -126,7 +126,7 @@ init =
                                         ]
                                     )
                             }
-                        ]
+                            |> List.repeat 100
                             |> Array.fromList
                     , connections = Set.empty
                     , settings = { filter = "", collapsedFields = AssocSet.empty }
