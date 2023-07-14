@@ -348,15 +348,18 @@ instructionView sessionName =
 
 loadedSessionView : LoadedData -> Element FrontendMsg
 loadedSessionView model =
-    let
-        filter : Set String
-        filter =
-            String.split "," model.settings.filter |> List.map String.trim |> Set.fromList
-    in
     if Array.isEmpty model.history && model.initialModel == Nothing then
         instructionView model.sessionName
 
     else
+        let
+            filter : Set String
+            filter =
+                String.split "," model.settings.filter |> List.map String.trim |> Set.fromList
+
+            historyLength =
+                Array.length model.history
+        in
         Element.row
             [ Element.width Element.fill
             , Element.height (Element.minimum 0 Element.fill)
@@ -401,7 +404,11 @@ loadedSessionView model =
                     (List.indexedMap Tuple.pair (Array.toList model.history)
                         |> List.filterMap
                             (\( index, event ) ->
-                                if eventIsHidden filter (eventMsg event) && index /= model.selected then
+                                if
+                                    eventIsHidden filter (eventMsg event)
+                                        && (index /= model.selected)
+                                        && (index /= historyLength - 1)
+                                then
                                     Nothing
 
                                 else
