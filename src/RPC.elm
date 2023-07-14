@@ -234,6 +234,20 @@ updateSession time dataType sessionName func model =
                         }
                         maybeSession
                         |> func
+                        |> (\a ->
+                                let
+                                    length =
+                                        Array.length a.history
+                                in
+                                { a
+                                    | history =
+                                        if length >= 1000 then
+                                            Array.slice 50 (length - 50) a.history
+
+                                        else
+                                            a.history
+                                }
+                           )
                         |> Just
                 )
                 model.sessions

@@ -4,6 +4,7 @@ import Array exposing (Array)
 import AssocList
 import AssocSet
 import Browser exposing (UrlRequest(..))
+import Browser.Dom
 import Browser.Navigation
 import DebugParser.ElmValue exposing (ElmValue(..), ExpandableValue(..))
 import Element exposing (Element)
@@ -131,6 +132,9 @@ updateLoaded msg model =
             else
                 ( model, Cmd.none )
 
+        ScrolledToBottom ->
+            ( model, Cmd.none )
+
 
 updateSettings : (DebugSessionSettings -> DebugSessionSettings) -> LoadedData -> ( LoadedData, Cmd FrontendMsg )
 updateSettings func model =
@@ -142,6 +146,11 @@ updateSettings func model =
 sessionNameToString : SessionName -> String
 sessionNameToString (SessionName sessionName) =
     sessionName
+
+
+historyContainerId : String
+historyContainerId =
+    "historyId"
 
 
 updateFromBackend : ToFrontend -> FrontendModel -> ( FrontendModel, Cmd FrontendMsg )
@@ -167,19 +176,25 @@ updateFromBackend msg model =
                     ( model, Cmd.none )
 
         SessionUpdate dataType ->
-            ( case model of
+            case model of
                 LoadedSession loaded ->
                     case dataType of
                         Init init_ ->
-                            LoadedSession
+                            ( LoadedSession
                                 { loaded
                                     | initialModel = Just init_.model
                                     , history = Array.empty
                                     , selected = 0
                                 }
+                            , Cmd.none
+                            )
 
                         Update update_ ->
-                            LoadedSession
+                            let
+                                selectedLatest =
+                                    loaded.selected == Array.length loaded.history - 1
+                            in
+                            ( LoadedSession
                                 { loaded
                                     | history =
                                         Array.push
@@ -191,15 +206,21 @@ updateFromBackend msg model =
                                             )
                                             loaded.history
                                     , selected =
-                                        if loaded.selected == Array.length loaded.history - 1 then
+                                        if selectedLatest then
                                             loaded.selected + 1
 
                                         else
                                             loaded.selected
                                 }
+                            , if selectedLatest then
+                                Browser.Dom.setViewportOf historyContainerId 0 99999999 |> Task.attempt (\_ -> ScrolledToBottom)
+
+                              else
+                                Cmd.none
+                            )
 
                         UpdateFromFrontend update_ ->
-                            LoadedSession
+                            ( LoadedSession
                                 { loaded
                                     | history =
                                         Array.push
@@ -219,11 +240,11 @@ updateFromBackend msg model =
                                         else
                                             loaded.selected
                                 }
+                            , Cmd.none
+                            )
 
                 _ ->
-                    model
-            , Cmd.none
-            )
+                    ( model, Cmd.none )
 
         ResetSession ->
             case model of
@@ -375,11 +396,12 @@ loadedSessionView model =
                     , Element.width Element.fill
                     , Element.height (Element.minimum 0 Element.fill)
                     , Element.scrollbars
+                    , Html.Attributes.id historyContainerId |> Element.htmlAttribute
                     ]
                     (List.indexedMap Tuple.pair (Array.toList model.history)
                         |> List.filterMap
                             (\( index, event ) ->
-                                if eventIsHidden filter (eventMsg event) then
+                                if eventIsHidden filter (eventMsg event) && index /= model.selected then
                                     Nothing
 
                                 else

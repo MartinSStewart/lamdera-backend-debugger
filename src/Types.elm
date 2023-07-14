@@ -114,6 +114,7 @@ type FrontendMsg
     | PressedCollapseField (List PathNode)
     | PressedExpandField (List PathNode)
     | DebounceFinished Int
+    | ScrolledToBottom
 
 
 type ToBackend
