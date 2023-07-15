@@ -166,6 +166,7 @@ updateFromBackend msg model =
                         , initialCmd = debugSession.initialCmd
                         , history = debugSession.history
                         , selected = Array.length debugSession.history - 1
+                        , indexOffset = 0
                         , settings = debugSession.settings
                         , debounceCounter = 0
                         }
@@ -178,6 +179,13 @@ updateFromBackend msg model =
         SessionUpdate dataType ->
             case model of
                 LoadedSession loaded ->
+                    let
+                        historyLength =
+                            Array.length loaded.history
+
+                        msgsToDrop =
+                            historyLength - 1000 |> max 0
+                    in
                     case dataType of
                         Init init_ ->
                             ( LoadedSession
@@ -205,6 +213,8 @@ updateFromBackend msg model =
                                                 }
                                             )
                                             loaded.history
+                                            |> (\a -> Array.slice msgsToDrop (Array.length a - msgsToDrop) a)
+                                    , indexOffset = loaded.indexOffset + msgsToDrop
                                     , selected =
                                         if selectedLatest then
                                             loaded.selected + 1
@@ -233,6 +243,8 @@ updateFromBackend msg model =
                                                 }
                                             )
                                             loaded.history
+                                            |> (\a -> Array.slice msgsToDrop (Array.length a - msgsToDrop) a)
+                                    , indexOffset = loaded.indexOffset + msgsToDrop
                                     , selected =
                                         if loaded.selected == Array.length loaded.history - 1 then
                                             loaded.selected + 1
@@ -429,7 +441,7 @@ loadedSessionView model =
                     , Element.spacing 16
                     , Element.scrollbars
                     ]
-                    [ case Array.get model.selected model.history of
+                    [ case Array.get (model.selected - model.indexOffset) model.history of
                         Just event ->
                             Element.column
                                 [ Element.Font.family [ Element.Font.monospace ], Element.spacing 4 ]
@@ -1059,26 +1071,26 @@ dictKey elmValue =
 
 getModel :
     Int
-    -> { a | initialModel : Maybe ElmValue, selected : Int, history : Array Event }
+    -> { a | initialModel : Maybe ElmValue, selected : Int, indexOffset : Int, history : Array Event }
     -> Maybe ElmValue
 getModel index model =
-    if index == -1 then
+    if index < model.indexOffset then
         model.initialModel
 
     else
-        Array.get index model.history |> Maybe.map eventNewModel
+        Array.get (index - model.indexOffset) model.history |> Maybe.map eventNewModel
 
 
 getCmd :
     Int
-    -> { a | initialCmd : Maybe ElmValue, selected : Int, history : Array Event }
+    -> { a | initialCmd : Maybe ElmValue, selected : Int, indexOffset : Int, history : Array Event }
     -> Maybe ElmValue
 getCmd index model =
-    if index == -1 then
+    if index < model.indexOffset then
         model.initialCmd
 
     else
-        Array.get index model.history |> Maybe.andThen eventCmd
+        Array.get (index - model.indexOffset) model.history |> Maybe.andThen eventCmd
 
 
 eventMsg : Event -> ElmValue

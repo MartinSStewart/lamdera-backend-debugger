@@ -30,6 +30,7 @@ type alias LoadedData =
     , initialCmd : Maybe ElmValue
     , history : Array Event
     , selected : Int
+    , indexOffset : Int
     , settings : DebugSessionSettings
     , debounceCounter : Int
     }
