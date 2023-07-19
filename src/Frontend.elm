@@ -217,10 +217,10 @@ updateFromBackend msg model =
                                     , indexOffset = loaded.indexOffset + msgsToDrop
                                     , selected =
                                         if selectedLatest then
-                                            loaded.selected + 1
+                                            loaded.selected + 1 - msgsToDrop
 
                                         else
-                                            loaded.selected
+                                            loaded.selected - msgsToDrop
                                 }
                             , if selectedLatest then
                                 Browser.Dom.setViewportOf historyContainerId 0 99999999 |> Task.attempt (\_ -> ScrolledToBottom)
@@ -247,10 +247,10 @@ updateFromBackend msg model =
                                     , indexOffset = loaded.indexOffset + msgsToDrop
                                     , selected =
                                         if loaded.selected == Array.length loaded.history - 1 then
-                                            loaded.selected + 1
+                                            loaded.selected + 1 - msgsToDrop
 
                                         else
-                                            loaded.selected
+                                            loaded.selected - msgsToDrop
                                 }
                             , Cmd.none
                             )
@@ -424,7 +424,7 @@ loadedSessionView model =
                                     Nothing
 
                                 else
-                                    Just (eventView model.selected index event)
+                                    Just (eventView model index event)
                             )
                     )
                 ]
@@ -441,7 +441,7 @@ loadedSessionView model =
                     , Element.spacing 16
                     , Element.scrollbars
                     ]
-                    [ case Array.get (model.selected - model.indexOffset) model.history of
+                    [ case Array.get model.selected model.history of
                         Just event ->
                             Element.column
                                 [ Element.Font.family [ Element.Font.monospace ], Element.spacing 4 ]
@@ -1071,26 +1071,26 @@ dictKey elmValue =
 
 getModel :
     Int
-    -> { a | initialModel : Maybe ElmValue, selected : Int, indexOffset : Int, history : Array Event }
+    -> { a | initialModel : Maybe ElmValue, selected : Int, history : Array Event }
     -> Maybe ElmValue
 getModel index model =
-    if index < model.indexOffset then
+    if index < 0 then
         model.initialModel
 
     else
-        Array.get (index - model.indexOffset) model.history |> Maybe.map eventNewModel
+        Array.get index model.history |> Maybe.map eventNewModel
 
 
 getCmd :
     Int
-    -> { a | initialCmd : Maybe ElmValue, selected : Int, indexOffset : Int, history : Array Event }
+    -> { a | initialCmd : Maybe ElmValue, selected : Int, history : Array Event }
     -> Maybe ElmValue
 getCmd index model =
-    if index < model.indexOffset then
+    if index < 0 then
         model.initialCmd
 
     else
-        Array.get (index - model.indexOffset) model.history |> Maybe.andThen eventCmd
+        Array.get index model.history |> Maybe.andThen eventCmd
 
 
 eventMsg : Event -> ElmValue
@@ -1123,15 +1123,19 @@ eventCmd event =
             cmd
 
 
-eventView : Int -> Int -> Event -> Element FrontendMsg
-eventView selected index event =
+eventView : LoadedData -> Int -> Event -> Element FrontendMsg
+eventView model index event =
+    let
+        index2 =
+            index + model.indexOffset + 1 |> String.fromInt
+    in
     Element.Input.button
         ([ Element.paddingXY 4 0
          , Element.height (Element.px 28)
          , Element.Font.size 14
          , Element.width Element.fill
          ]
-            ++ (if selected == index then
+            ++ (if model.selected == index then
                     [ Element.Background.color (Element.rgb 0.7 0.9 0.7) ]
 
                 else
@@ -1141,12 +1145,12 @@ eventView selected index event =
         (case event of
             BackendMsgEvent { msg } ->
                 { onPress = Just (PressedEvent index)
-                , label = Element.row [] [ Element.text (String.fromInt (index + 1) ++ ". "), singleLineView msg ]
+                , label = Element.row [] [ Element.text (index2 ++ ". "), singleLineView msg ]
                 }
 
             ToBackendEvent { msg } ->
                 { onPress = Just (PressedEvent index)
-                , label = Element.row [] [ Element.text (String.fromInt (index + 1) ++ ". "), singleLineView msg ]
+                , label = Element.row [] [ Element.text (index2 ++ ". "), singleLineView msg ]
                 }
         )
 
