@@ -170,7 +170,7 @@ updateFromBackend msg model =
                         , settings = debugSession.settings
                         , debounceCounter = 0
                         }
-                    , Cmd.none
+                    , Browser.Dom.setViewportOf historyContainerId 0 99999999 |> Task.attempt (\_ -> ScrolledToBottom)
                     )
 
                 _ ->
