@@ -213,7 +213,7 @@ updateFromBackend msg model =
                                                 }
                                             )
                                             loaded.history
-                                            |> (\a -> Array.slice msgsToDrop (Array.length a - msgsToDrop) a)
+                                            |> (\a -> Array.slice msgsToDrop historyLength a)
                                     , indexOffset = loaded.indexOffset + msgsToDrop
                                     , selected =
                                         if selectedLatest then
@@ -243,7 +243,7 @@ updateFromBackend msg model =
                                                 }
                                             )
                                             loaded.history
-                                            |> (\a -> Array.slice msgsToDrop (Array.length a - msgsToDrop) a)
+                                            |> (\a -> Array.slice msgsToDrop historyLength a)
                                     , indexOffset = loaded.indexOffset + msgsToDrop
                                     , selected =
                                         if loaded.selected == Array.length loaded.history - 1 then
