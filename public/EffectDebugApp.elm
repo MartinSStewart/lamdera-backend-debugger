@@ -3,6 +3,8 @@ module EffectDebugApp exposing (backend)
 import Effect.Command as Command exposing (BackendOnly, Command)
 import Effect.Http
 import Effect.Lamdera
+import Effect.Task
+import Effect.Time
 import Json.Encode
 
 
@@ -81,15 +83,28 @@ type DataType
 
 sendToViewer : msg -> DataType -> Command BackendOnly toFrontend msg
 sendToViewer backendNoOp data =
-    Effect.Http.post
-        { url = "http://localhost:8001/https://backend-debugger.lamdera.app/_r/data"
-        , body = Effect.Http.jsonBody (encodeDataType data)
-        , expect = Effect.Http.expectWhatever (\_ -> backendNoOp)
-        }
+    Effect.Time.now
+        |> Effect.Task.andThen
+            (\time ->
+                Effect.Http.task
+                    { method = "POST"
+                    , headers = []
+                    , url = "http://localhost:8001/https://backend-debugger.lamdera.app/_r/data"
+                    , body = Effect.Http.jsonBody (encodeDataType time data)
+                    , resolver = Effect.Http.bytesResolver (\_ -> Ok ())
+                    , timeout = Just 10000
+                    }
+            )
+        |> Effect.Task.attempt (\_ -> backendNoOp)
 
 
-encodeDataType : DataType -> Json.Encode.Value
-encodeDataType data =
+encodeTime : Effect.Time.Posix -> Json.Encode.Value
+encodeTime time =
+    Effect.Time.posixToMillis time |> Json.Encode.int
+
+
+encodeDataType : Effect.Time.Posix -> DataType -> Json.Encode.Value
+encodeDataType time data =
     Json.Encode.list
         identity
         (case data of
@@ -98,6 +113,7 @@ encodeDataType data =
                 , Json.Encode.string sessionName
                 , Json.Encode.string model
                 , Json.Encode.string cmd
+                , encodeTime time
                 ]
 
             Update { sessionName, msg, newModel, cmd } ->
@@ -106,6 +122,7 @@ encodeDataType data =
                 , Json.Encode.string msg
                 , Json.Encode.string newModel
                 , Json.Encode.string cmd
+                , encodeTime time
                 ]
 
             UpdateFromFrontend { sessionName, msg, newModel, sessionId, clientId, cmd } ->
@@ -116,5 +133,6 @@ encodeDataType data =
                 , Json.Encode.string sessionId
                 , Json.Encode.string clientId
                 , Json.Encode.string cmd
+                , encodeTime time
                 ]
         )

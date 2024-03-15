@@ -35,6 +35,10 @@ decodeSessionName =
     Json.Decode.map SessionName Json.Decode.string
 
 
+timeDecode =
+    Json.Decode.map Time.millisToPosix Json.Decode.int
+
+
 decodeDataType : Decoder DataType
 decodeDataType =
     Json.Decode.index 0 Json.Decode.int
@@ -42,7 +46,7 @@ decodeDataType =
             (\dataType ->
                 case dataType of
                     2 ->
-                        Json.Decode.map6
+                        Json.Decode.map7
                             UpdateFromFrontend_
                             (Json.Decode.index 1 decodeSessionName)
                             (Json.Decode.index 2 decodeElmValue)
@@ -50,23 +54,26 @@ decodeDataType =
                             (Json.Decode.index 4 Json.Decode.string)
                             (Json.Decode.index 5 Json.Decode.string)
                             (Json.Decode.index 6 (Json.Decode.nullable decodeElmValue))
+                            (Json.Decode.maybe (Json.Decode.index 7 timeDecode))
                             |> Json.Decode.map UpdateFromFrontend
 
                     1 ->
-                        Json.Decode.map4
+                        Json.Decode.map5
                             Update_
                             (Json.Decode.index 1 decodeSessionName)
                             (Json.Decode.index 2 decodeElmValue)
                             (Json.Decode.index 3 decodeElmValue)
                             (Json.Decode.index 4 (Json.Decode.nullable decodeElmValue))
+                            (Json.Decode.maybe (Json.Decode.index 5 timeDecode))
                             |> Json.Decode.map Update
 
                     0 ->
-                        Json.Decode.map3
+                        Json.Decode.map4
                             Init_
                             (Json.Decode.index 1 decodeSessionName)
                             (Json.Decode.index 2 decodeElmValue)
                             (Json.Decode.index 3 (Json.Decode.nullable decodeElmValue))
+                            (Json.Decode.maybe (Json.Decode.index 4 timeDecode))
                             |> Json.Decode.map Init
 
                     _ ->

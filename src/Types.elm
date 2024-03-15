@@ -59,11 +59,20 @@ type DataType
 
 
 type alias Init_ =
-    { sessionName : SessionName, model : ElmValue, maybeCmd : Maybe ElmValue }
+    { sessionName : SessionName
+    , model : ElmValue
+    , maybeCmd : Maybe ElmValue
+    , time : Maybe Time.Posix
+    }
 
 
 type alias Update_ =
-    { sessionName : SessionName, msg : ElmValue, newModel : ElmValue, maybeCmd : Maybe ElmValue }
+    { sessionName : SessionName
+    , msg : ElmValue
+    , newModel : ElmValue
+    , maybeCmd : Maybe ElmValue
+    , time : Maybe Time.Posix
+    }
 
 
 type alias UpdateFromFrontend_ =
@@ -73,6 +82,7 @@ type alias UpdateFromFrontend_ =
     , sessionId : String
     , clientId : String
     , maybeCmd : Maybe ElmValue
+    , time : Maybe Time.Posix
     }
 
 

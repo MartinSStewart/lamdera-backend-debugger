@@ -3,6 +3,8 @@ module DebugApp exposing (backend)
 import Http
 import Json.Encode
 import Lamdera exposing (ClientId, SessionId)
+import Task
+import Time
 
 
 backend :
@@ -90,15 +92,28 @@ type DataType
 
 sendToViewer : msg -> DataType -> Cmd msg
 sendToViewer backendNoOp data =
-    Http.post
-        { url = "http://localhost:8001/https://backend-debugger.lamdera.app/_r/data"
-        , body = Http.jsonBody (encodeDataType data)
-        , expect = Http.expectWhatever (\_ -> backendNoOp)
-        }
+    Time.now
+        |> Task.andThen
+            (\time ->
+                Http.task
+                    { method = "POST"
+                    , headers = []
+                    , url = "http://localhost:8001/https://backend-debugger.lamdera.app/_r/data"
+                    , body = Http.jsonBody (encodeDataType time data)
+                    , resolver = Http.bytesResolver (\_ -> Ok ())
+                    , timeout = Just 10000
+                    }
+            )
+        |> Task.attempt (\_ -> backendNoOp)
 
 
-encodeDataType : DataType -> Json.Encode.Value
-encodeDataType data =
+encodeTime : Time.Posix -> Json.Encode.Value
+encodeTime time =
+    Time.posixToMillis time |> Json.Encode.int
+
+
+encodeDataType : Time.Posix -> DataType -> Json.Encode.Value
+encodeDataType time data =
     Json.Encode.list
         identity
         (case data of
@@ -107,6 +122,7 @@ encodeDataType data =
                 , Json.Encode.string sessionName
                 , Json.Encode.string model
                 , Json.Encode.null
+                , encodeTime time
                 ]
 
             Update { sessionName, msg, newModel } ->
@@ -115,6 +131,7 @@ encodeDataType data =
                 , Json.Encode.string msg
                 , Json.Encode.string newModel
                 , Json.Encode.null
+                , encodeTime time
                 ]
 
             UpdateFromFrontend { sessionName, msg, newModel, sessionId, clientId } ->
@@ -125,5 +142,6 @@ encodeDataType data =
                 , Json.Encode.string sessionId
                 , Json.Encode.string clientId
                 , Json.Encode.null
+                , encodeTime time
                 ]
         )
