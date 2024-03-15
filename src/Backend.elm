@@ -125,6 +125,7 @@ init =
                                           )
                                         ]
                                     )
+                            , time = Time.millisToPosix 0
                             }
                             |> List.repeat 100
                             |> Array.fromList

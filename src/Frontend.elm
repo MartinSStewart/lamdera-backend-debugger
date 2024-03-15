@@ -22,6 +22,7 @@ import Set exposing (Set)
 import Sha256
 import SyntaxHighlight
 import Task
+import Time
 import Types exposing (..)
 import Url
 import Url.Parser
@@ -100,7 +101,7 @@ updateLoaded msg model =
                     , Browser.Navigation.load url
                     )
 
-        UrlChanged url ->
+        UrlChanged _ ->
             ( model, Cmd.none )
 
         PressedEvent index ->
@@ -176,7 +177,7 @@ updateFromBackend msg model =
                 _ ->
                     ( model, Cmd.none )
 
-        SessionUpdate dataType ->
+        SessionUpdate dataType time ->
             case model of
                 LoadedSession loaded ->
                     let
@@ -205,11 +206,12 @@ updateFromBackend msg model =
                             ( LoadedSession
                                 { loaded
                                     | history =
-                                        Array.push
+                                        arrayPushSorted
                                             (BackendMsgEvent
                                                 { msg = update_.msg
                                                 , newModel = update_.newModel
                                                 , cmd = update_.maybeCmd
+                                                , time = Maybe.withDefault time update_.time
                                                 }
                                             )
                                             loaded.history
@@ -233,13 +235,14 @@ updateFromBackend msg model =
                             ( LoadedSession
                                 { loaded
                                     | history =
-                                        Array.push
+                                        arrayPushSorted
                                             (ToBackendEvent
                                                 { msg = update_.msg
                                                 , newModel = update_.newModel
                                                 , sessionId = update_.sessionId
                                                 , clientId = update_.clientId
                                                 , cmd = update_.maybeCmd
+                                                , time = Maybe.withDefault time update_.time
                                                 }
                                             )
                                             loaded.history
@@ -265,6 +268,24 @@ updateFromBackend msg model =
 
                 _ ->
                     ( model, Cmd.none )
+
+
+eventTime : Event -> Time.Posix
+eventTime event =
+    case event of
+        BackendMsgEvent a ->
+            a.time
+
+        ToBackendEvent a ->
+            a.time
+
+
+arrayPushSorted : Event -> Array Event -> Array Event
+arrayPushSorted item array =
+    Array.toList array
+        |> (::) item
+        |> List.sortBy (\event -> eventTime event |> Time.posixToMillis)
+        |> Array.fromList
 
 
 view : FrontendModel -> Browser.Document FrontendMsg
@@ -533,7 +554,7 @@ collapsedValue value =
         [ Element.Font.color (Element.rgb 0.4 0.4 0.4) ]
         (Element.text
             (case value of
-                Plain plainValue ->
+                Plain _ ->
                     "<primitive>"
 
                 Expandable expandableValue ->
@@ -555,7 +576,7 @@ collapsedValue value =
                         ElmType variant _ ->
                             "<" ++ variant ++ ">"
 
-                        ElmRecord list ->
+                        ElmRecord _ ->
                             "<record>"
 
                         ElmDict list ->
@@ -620,7 +641,7 @@ singleLineView value =
 
         Expandable expandableValue ->
             case expandableValue of
-                ElmSequence sequenceType elmValues ->
+                ElmSequence sequenceType _ ->
                     let
                         ( startChar, endChar ) =
                             sequenceStartEnd sequenceType
@@ -630,10 +651,10 @@ singleLineView value =
                 ElmType variant elmValues ->
                     Element.row [ Element.spacing 8 ] (variantText variant :: List.map singleLineView elmValues)
 
-                ElmRecord list ->
+                ElmRecord _ ->
                     Element.text "{ ... }"
 
-                ElmDict list ->
+                ElmDict _ ->
                     Element.text "{{ ... }}"
 
 
@@ -667,7 +688,7 @@ isSingleLine elmValue =
                 ElmType _ elmValues ->
                     List.isEmpty elmValues
 
-                ElmRecord list ->
+                ElmRecord _ ->
                     False
 
                 ElmDict dict ->
@@ -1051,7 +1072,7 @@ dictKey elmValue =
                 ElmSequence _ _ ->
                     column ()
 
-                ElmType variant elmValues ->
+                ElmType _ elmValues ->
                     case elmValues of
                         [] ->
                             row ()

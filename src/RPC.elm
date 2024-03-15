@@ -1,10 +1,11 @@
 module RPC exposing (..)
 
-import Array
+import Array exposing (Array)
 import AssocList as Dict
 import AssocSet
 import DebugParser
 import DebugParser.ElmValue exposing (ElmValue(..), ExpandableValue(..), SequenceType(..))
+import Frontend
 import Http
 import Json.Decode exposing (Decoder)
 import Json.Encode
@@ -131,13 +132,14 @@ dataEndpointWithTime time _ model dataType =
                 (\session ->
                     { session
                         | history =
-                            Array.push
+                            Frontend.arrayPushSorted
                                 (ToBackendEvent
                                     { sessionId = data.sessionId
                                     , clientId = data.clientId
                                     , msg = data.msg
                                     , newModel = data.newModel
                                     , cmd = data.maybeCmd
+                                    , time = Maybe.withDefault time data.time
                                     }
                                 )
                                 session.history
@@ -166,11 +168,12 @@ dataEndpointWithTime time _ model dataType =
                 (\session ->
                     { session
                         | history =
-                            Array.push
+                            Frontend.arrayPushSorted
                                 (BackendMsgEvent
                                     { msg = data.msg
                                     , newModel = data.newModel
                                     , cmd = data.maybeCmd
+                                    , time = Maybe.withDefault time data.time
                                     }
                                 )
                                 session.history
@@ -259,7 +262,7 @@ updateSession time dataType sessionName func model =
                 )
                 model.sessions
       }
-    , broadcastToClients sessionName (SessionUpdate dataType) model
+    , broadcastToClients sessionName (SessionUpdate dataType time) model
     )
 
 

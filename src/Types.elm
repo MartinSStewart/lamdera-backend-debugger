@@ -108,11 +108,21 @@ type Event
 
 
 type alias BackendMsgEvent_ =
-    { msg : ElmValue, newModel : ElmValue, cmd : Maybe ElmValue }
+    { msg : ElmValue
+    , newModel : ElmValue
+    , cmd : Maybe ElmValue
+    , time : Time.Posix
+    }
 
 
 type alias ToBackendEvent_ =
-    { msg : ElmValue, newModel : ElmValue, sessionId : String, clientId : String, cmd : Maybe ElmValue }
+    { msg : ElmValue
+    , newModel : ElmValue
+    , sessionId : String
+    , clientId : String
+    , cmd : Maybe ElmValue
+    , time : Time.Posix
+    }
 
 
 type FrontendMsg
@@ -144,5 +154,5 @@ type BackendMsg
 
 type ToFrontend
     = LoadSessionResponse DebugSession
-    | SessionUpdate DataType
+    | SessionUpdate DataType Time.Posix
     | ResetSession
