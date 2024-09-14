@@ -17,6 +17,7 @@
             "elm/random": "1.0.0",
             "elm/time": "1.0.0",
             "elm/url": "1.0.0",
+            "erlandsona/assoc-set": "1.1.2",
             "elm-community/list-extra": "8.7.0",
             "f0i/debug-to-json": "1.0.6",
             "ianmackenzie/elm-units": "2.10.0",
@@ -25,7 +26,8 @@
             "lamdera/containers": "1.0.0",
             "lamdera/core": "1.0.0",
             "mdgriffith/elm-ui": "1.1.8",
-            "pablohirafuji/elm-syntax-highlight": "3.4.1"
+            "pablohirafuji/elm-syntax-highlight": "3.4.1",
+            "pzp1997/assoc-list": "1.0.0"
         },
         "indirect": {
             "elm/file": "1.0.5",
