@@ -1,13 +1,46 @@
 module EffectDebugApp exposing (backend)
 
+import Duration
 import Effect.Command as Command exposing (BackendOnly, Command)
 import Effect.Http
 import Effect.Lamdera
+import Effect.Subscription exposing (Subscription)
 import Effect.Task
 import Effect.Time
 import Json.Encode
+import Lamdera exposing (ClientId, SessionId)
 
 
+backend :
+    backendMsg
+    -> String
+    -> (toFrontend -> Cmd backendMsg)
+    -> (ClientId -> toFrontend -> Cmd backendMsg)
+    ->
+        { init : ( backendModel, Command BackendOnly toFrontend backendMsg )
+        , update :
+            backendMsg
+            -> backendModel
+            -> ( backendModel, Command BackendOnly toFrontend backendMsg )
+        , updateFromFrontend :
+            Effect.Lamdera.SessionId
+            -> Effect.Lamdera.ClientId
+            -> toBackend
+            -> backendModel
+            -> ( backendModel, Command BackendOnly toFrontend backendMsg )
+        , subscriptions : backendModel -> Subscription BackendOnly backendMsg
+        }
+    ->
+        { init : ( backendModel, Cmd backendMsg )
+        , update : backendMsg -> backendModel -> ( backendModel, Cmd backendMsg )
+        , updateFromFrontend :
+            SessionId
+            -> ClientId
+            -> toBackend
+            -> backendModel
+            -> ( backendModel, Cmd backendMsg )
+        , subscriptions : backendModel -> Sub backendMsg
+        }
 backend backendNoOp sessionName broadcast sendToFrontend { init, update, updateFromFrontend, subscriptions } =
     Effect.Lamdera.backend
         broadcast
@@ -92,7 +125,7 @@ sendToViewer backendNoOp data =
                     , url = "http://localhost:8001/https://backend-debugger.lamdera.app/_r/data"
                     , body = Effect.Http.jsonBody (encodeDataType time data)
                     , resolver = Effect.Http.bytesResolver (\_ -> Ok ())
-                    , timeout = Just 10000
+                    , timeout = Just (Duration.seconds 10)
                     }
             )
         |> Effect.Task.attempt (\_ -> backendNoOp)

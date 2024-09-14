@@ -1,8 +1,6 @@
 module RPC exposing (..)
 
 import Array exposing (Array)
-import AssocList as Dict
-import AssocSet
 import DebugParser
 import DebugParser.ElmValue exposing (ElmValue(..), ExpandableValue(..), SequenceType(..))
 import Frontend
@@ -12,6 +10,8 @@ import Json.Encode
 import Lamdera exposing (SessionId)
 import Lamdera.Wire3 as Wire3
 import LamderaRPC
+import SeqDict
+import SeqSet
 import Set
 import Task exposing (Task)
 import Time
@@ -84,7 +84,7 @@ decodeDataType =
 
 broadcastToClients : SessionName -> ToFrontend -> BackendModel -> Cmd BackendMsg
 broadcastToClients sessionName toFrontend model =
-    case Dict.get sessionName model.sessions of
+    case SeqDict.get sessionName model.sessions of
         Just session ->
             Set.toList session.connections
                 |> List.map (\clientId -> Lamdera.sendToFrontend clientId toFrontend)
@@ -231,7 +231,7 @@ updateSession :
 updateSession time dataType sessionName func model =
     ( { model
         | sessions =
-            Dict.update
+            SeqDict.update
                 sessionName
                 (\maybeSession ->
                     Maybe.withDefault
@@ -239,7 +239,7 @@ updateSession time dataType sessionName func model =
                         , initialCmd = Nothing
                         , history = Array.empty
                         , connections = Set.empty
-                        , settings = { filter = "", collapsedFields = AssocSet.empty }
+                        , settings = { filter = "", collapsedFields = SeqSet.empty }
                         , lastChange = time
                         }
                         maybeSession

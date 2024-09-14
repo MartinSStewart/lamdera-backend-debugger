@@ -1,8 +1,6 @@
 module Frontend exposing (..)
 
 import Array exposing (Array)
-import AssocList
-import AssocSet
 import Browser exposing (UrlRequest(..))
 import Browser.Dom
 import Browser.Navigation
@@ -18,6 +16,8 @@ import Html.Attributes
 import Lamdera
 import Process
 import Random
+import SeqDict
+import SeqSet exposing (SeqSet)
 import Set exposing (Set)
 import Sha256
 import SyntaxHighlight
@@ -118,12 +118,12 @@ updateLoaded msg model =
 
         PressedCollapseField path ->
             updateSettings
-                (\settings -> { settings | collapsedFields = AssocSet.insert path settings.collapsedFields })
+                (\settings -> { settings | collapsedFields = SeqSet.insert path settings.collapsedFields })
                 model
 
         PressedExpandField path ->
             updateSettings
-                (\settings -> { settings | collapsedFields = AssocSet.remove path settings.collapsedFields })
+                (\settings -> { settings | collapsedFields = SeqSet.remove path settings.collapsedFields })
                 model
 
         DebounceFinished counter ->
@@ -135,6 +135,9 @@ updateLoaded msg model =
 
         ScrolledToBottom ->
             ( model, Cmd.none )
+
+        ToggledIsUsingProgramTest bool ->
+            ( { model | isUsingProgramTest = bool }, Cmd.none )
 
 
 updateSettings : (DebugSessionSettings -> DebugSessionSettings) -> LoadedData -> ( LoadedData, Cmd FrontendMsg )
@@ -170,6 +173,7 @@ updateFromBackend msg model =
                         , indexOffset = 0
                         , settings = debugSession.settings
                         , debounceCounter = 0
+                        , isUsingProgramTest = False
                         }
                     , Browser.Dom.setViewportOf historyContainerId 0 99999999 |> Task.attempt (\_ -> ScrolledToBottom)
                     )
@@ -350,39 +354,135 @@ eventIsHidden hiddenVariants elmValue =
                         list
 
 
-instructionView : SessionName -> Element msg
-instructionView sessionName =
+checkIcon checked =
+    Element.el
+        [ Element.htmlAttribute (Html.Attributes.class "focusable")
+        , Element.width
+            (Element.px 18)
+        , Element.height (Element.px 18)
+        , Element.Font.color (Element.rgb 1 1 1)
+        , Element.centerY
+        , Element.Font.size 9
+        , Element.Font.center
+        , Element.Border.rounded 4
+        , Element.Border.color <|
+            if checked then
+                Element.rgb (59 / 255) (153 / 255) (252 / 255)
+
+            else
+                Element.rgb (211 / 255) (211 / 255) (211 / 255)
+        , Element.Border.shadow
+            { offset = ( 0, 0 )
+            , blur = 1
+            , size = 1
+            , color =
+                if checked then
+                    Element.rgba (238 / 255) (238 / 255) (238 / 255) 0
+
+                else
+                    Element.rgb (238 / 255) (238 / 255) (238 / 255)
+            }
+        , Element.Background.color <|
+            if checked then
+                Element.rgb (59 / 255) (153 / 255) (252 / 255)
+
+            else
+                Element.rgb 1 1 1
+        , Element.Border.width <|
+            if checked then
+                0
+
+            else
+                1
+        , Element.inFront
+            (Element.el
+                [ Element.Border.color (Element.rgb 1 1 1)
+                , Element.height (Element.px 6)
+                , Element.width (Element.px 9)
+                , Element.rotate (degrees -45)
+                , Element.centerX
+                , Element.centerY
+                , Element.moveUp 1
+                , Element.transparent (not checked)
+                , Element.Border.widthEach
+                    { top = 0
+                    , left = 2
+                    , bottom = 2
+                    , right = 0
+                    }
+                ]
+                Element.none
+            )
+        ]
+        Element.none
+
+
+instructionView : Bool -> SessionName -> Element FrontendMsg
+instructionView isUsingProgramTest sessionName =
     Element.column
-        [ Element.spacing 24
+        [ Element.spacing 32
         , Element.centerX
         , Element.centerY
         , Element.width (Element.px 600)
         , Element.Font.size 20
         ]
-        [ Element.paragraph
-            []
-            [ Element.text "To get started copy "
-            , link (Env.domain ++ "/DebugApp.elm") "DebugApp.elm"
-            , Element.text " into your src folder (or "
-            , link (Env.domain ++ "/EffectDebugApp.elm") "EffectDebugApp.elm"
-            , Element.text " if you are using "
-            , link "https://github.com/lamdera/program-test" "lamdera/program-test"
-            , Element.text ")."
+        [ Element.el
+            [ Element.Background.color (Element.rgb255 250 250 240)
+            , Element.Border.width 1
+            , Element.Border.color (Element.rgb255 220 220 200)
+            , Element.width Element.fill
             ]
+            (Element.Input.checkbox
+                [ Element.padding 8 ]
+                { onChange = ToggledIsUsingProgramTest
+                , icon = checkIcon
+                , checked = isUsingProgramTest
+                , label = Element.Input.labelRight [] (Element.text "Check this if you're using lamdera/program-test")
+                }
+            )
+
+        --, Element.el [ Element.width Element.fill, Element.Border.width 1 ] Element.none
         , Element.column
-            [ Element.spacing 8, Element.width Element.fill ]
-            [ Element.paragraph [] [ Element.text "Then replace" ]
-            , code SyntaxHighlight.elm codeBefore
-            , Element.text "with"
-            , code SyntaxHighlight.elm (codeAfter sessionName)
-            ]
+            [ Element.spacing 24, Element.width Element.fill ]
+            (if isUsingProgramTest then
+                [ Element.paragraph
+                    []
+                    [ Element.text "To get started copy "
+                    , link (Env.domain ++ "/EffectDebugApp.elm") "EffectDebugApp.elm"
+                    , Element.text " into your src folder."
+                    ]
+                , Element.column
+                    [ Element.spacing 8, Element.width Element.fill ]
+                    [ Element.paragraph [] [ Element.text "Then replace" ]
+                    , code SyntaxHighlight.elm codeBeforeProgramTest
+                    , Element.text "with"
+                    , code SyntaxHighlight.elm (codeAfterProgramTest sessionName)
+                    ]
+                ]
+
+             else
+                [ Element.paragraph
+                    []
+                    [ Element.text "To get started copy "
+                    , link (Env.domain ++ "/DebugApp.elm") "DebugApp.elm"
+                    , Element.text " into your src folder."
+                    ]
+                , Element.column
+                    [ Element.spacing 8, Element.width Element.fill ]
+                    [ Element.paragraph [] [ Element.text "Then replace" ]
+                    , code SyntaxHighlight.elm codeBefore
+                    , Element.text "with"
+                    , code SyntaxHighlight.elm (codeAfter sessionName)
+                    ]
+                ]
+            )
         ]
 
 
 loadedSessionView : LoadedData -> Element FrontendMsg
 loadedSessionView model =
     if Array.isEmpty model.history && model.initialModel == Nothing then
-        instructionView model.sessionName
+        instructionView model.isUsingProgramTest model.sessionName
 
     else
         let
@@ -701,7 +801,7 @@ indexedMap2 func listA listB =
         |> List.indexedMap (\index ( a, b ) -> func index a b)
 
 
-treeViewDiff : List PathNode -> AssocSet.Set (List PathNode) -> ElmValue -> ElmValue -> Element FrontendMsg
+treeViewDiff : List PathNode -> SeqSet (List PathNode) -> ElmValue -> ElmValue -> Element FrontendMsg
 treeViewDiff currentPath collapsedFields oldValue value =
     case ( oldValue, value ) of
         ( Plain oldPlainValue, Plain plainValue ) ->
@@ -838,7 +938,7 @@ treeViewDiff currentPath collapsedFields oldValue value =
                                         FieldNode fieldName :: currentPath
 
                                     isCollapsed =
-                                        AssocSet.member nextPath collapsedFields
+                                        SeqSet.member nextPath collapsedFields
                                 in
                                 if isSingleLine elmValue then
                                     Element.row []
@@ -883,13 +983,13 @@ treeViewDiff currentPath collapsedFields oldValue value =
                     else
                         let
                             oldDict2 =
-                                AssocList.fromList oldDict
+                                SeqDict.fromList oldDict
 
                             dict2 =
-                                AssocList.fromList dict
+                                SeqDict.fromList dict
 
                             merge =
-                                AssocList.merge
+                                SeqDict.merge
                                     (\key old state ->
                                         Element.column
                                             [ oldColor ]
@@ -1272,9 +1372,41 @@ codeBefore =
 
 codeAfter : SessionName -> String
 codeAfter sessionName =
-    """DebugApp.backend
+    """import DebugApp
+
+DebugApp.backend
     NoOpBackendMsg
     \"""" ++ sessionNameToString sessionName ++ """"
+    { init = init
+    , update = update
+    , updateFromFrontend = updateFromFrontend
+    , subscriptions = subscriptions
+    }
+"""
+
+
+codeBeforeProgramTest : String
+codeBeforeProgramTest =
+    """Effect.Lamdera.backend
+    Lamdera.broadcast
+    Lamdera.sendToFrontend
+    { init = init
+    , update = update
+    , updateFromFrontend = updateFromFrontend
+    , subscriptions = subscriptions
+    }
+"""
+
+
+codeAfterProgramTest : SessionName -> String
+codeAfterProgramTest sessionName =
+    """import EffectDebugApp
+
+EffectDebugApp.backend
+    NoOpBackendMsg
+    \"""" ++ sessionNameToString sessionName ++ """"
+    Lamdera.broadcast
+    Lamdera.sendToFrontend
     { init = init
     , update = update
     , updateFromFrontend = updateFromFrontend

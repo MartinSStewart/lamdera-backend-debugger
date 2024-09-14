@@ -1,15 +1,14 @@
 module Backend exposing (..)
 
 import Array
-import AssocList as Dict
-import AssocSet
 import DebugParser.ElmValue exposing (ElmValue(..), ExpandableValue(..), PlainValue(..), SequenceType(..))
 import Duration
-import Html
 import Lamdera exposing (ClientId, SessionId)
 import List.Extra as List
 import Quantity
 import RPC
+import SeqDict
+import SeqSet
 import Set
 import Task
 import Time
@@ -35,7 +34,7 @@ init : ( BackendModel, Cmd BackendMsg )
 init =
     ( --{ sessions = Dict.empty }
       { sessions =
-            Dict.fromList
+            SeqDict.fromList
                 [ ( SessionName "test"
                   , { initialCmd = Just (Plain (ElmNumber 5))
                     , initialModel =
@@ -130,7 +129,7 @@ init =
                             |> List.repeat 100
                             |> Array.fromList
                     , connections = Set.empty
-                    , settings = { filter = "", collapsedFields = AssocSet.empty }
+                    , settings = { filter = "", collapsedFields = SeqSet.empty }
                     , lastChange = Time.millisToPosix 1000000000000
                     }
                   )
@@ -149,7 +148,7 @@ update msg model =
         ClientDisconnected _ clientId ->
             ( { model
                 | sessions =
-                    Dict.map
+                    SeqDict.map
                         (\_ session -> { session | connections = Set.remove clientId session.connections })
                         model.sessions
               }
@@ -162,7 +161,7 @@ update msg model =
         HourlyCheck time ->
             ( { model
                 | sessions =
-                    Dict.filter
+                    SeqDict.filter
                         (\_ session ->
                             Duration.from session.lastChange time
                                 |> Quantity.lessThan Duration.day
@@ -185,11 +184,11 @@ updateFromFrontendWithTime : Time.Posix -> SessionId -> ClientId -> ToBackend ->
 updateFromFrontendWithTime time sessionId clientId msg model =
     case msg of
         LoadSessionRequest sessionName ->
-            case Dict.get sessionName model.sessions of
+            case SeqDict.get sessionName model.sessions of
                 Just session ->
                     ( { model
                         | sessions =
-                            Dict.insert
+                            SeqDict.insert
                                 sessionName
                                 { session
                                     | connections = Set.insert clientId session.connections
@@ -208,11 +207,11 @@ updateFromFrontendWithTime time sessionId clientId msg model =
                             , initialCmd = Nothing
                             , history = Array.empty
                             , connections = Set.singleton clientId
-                            , settings = { filter = "", collapsedFields = AssocSet.empty }
+                            , settings = { filter = "", collapsedFields = SeqSet.empty }
                             , lastChange = time
                             }
                     in
-                    ( { model | sessions = Dict.insert sessionName session model.sessions }
+                    ( { model | sessions = SeqDict.insert sessionName session model.sessions }
                     , Lamdera.sendToFrontend clientId (LoadSessionResponse session)
                     )
 
@@ -223,7 +222,7 @@ updateFromFrontendWithTime time sessionId clientId msg model =
                         model2 =
                             { model
                                 | sessions =
-                                    Dict.insert
+                                    SeqDict.insert
                                         sessionName
                                         { session
                                             | history = Array.empty
@@ -248,7 +247,7 @@ updateFromFrontendWithTime time sessionId clientId msg model =
                         model2 =
                             { model
                                 | sessions =
-                                    Dict.insert
+                                    SeqDict.insert
                                         sessionName
                                         { session | settings = settings, lastChange = time }
                                         model.sessions
@@ -262,5 +261,5 @@ updateFromFrontendWithTime time sessionId clientId msg model =
 
 getSessionByClientId : ClientId -> BackendModel -> Maybe ( SessionName, DebugSession )
 getSessionByClientId clientId model =
-    Dict.toList model.sessions
+    SeqDict.toList model.sessions
         |> List.find (\( sessionName, session ) -> Set.member clientId session.connections)

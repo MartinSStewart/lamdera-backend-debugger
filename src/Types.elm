@@ -1,14 +1,12 @@
 module Types exposing (..)
 
 import Array exposing (Array)
-import AssocList
-import AssocSet
 import Browser exposing (UrlRequest)
 import Browser.Navigation exposing (Key)
 import DebugParser.ElmValue exposing (ElmValue)
-import Dict exposing (Dict)
-import Json.Decode
 import Lamdera exposing (ClientId, SessionId)
+import SeqDict exposing (SeqDict)
+import SeqSet exposing (SeqSet)
 import Set exposing (Set)
 import Time
 import Url exposing (Url)
@@ -33,6 +31,7 @@ type alias LoadedData =
     , indexOffset : Int
     , settings : DebugSessionSettings
     , debounceCounter : Int
+    , isUsingProgramTest : Bool
     }
 
 
@@ -44,7 +43,7 @@ type PathNode
 
 
 type alias BackendModel =
-    { sessions : AssocList.Dict SessionName DebugSession
+    { sessions : SeqDict SessionName DebugSession
     }
 
 
@@ -98,7 +97,7 @@ type alias DebugSession =
 
 type alias DebugSessionSettings =
     { filter : String
-    , collapsedFields : AssocSet.Set (List PathNode)
+    , collapsedFields : SeqSet (List PathNode)
     }
 
 
@@ -136,6 +135,7 @@ type FrontendMsg
     | PressedExpandField (List PathNode)
     | DebounceFinished Int
     | ScrolledToBottom
+    | ToggledIsUsingProgramTest Bool
 
 
 type ToBackend
