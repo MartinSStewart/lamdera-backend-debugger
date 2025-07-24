@@ -193,6 +193,51 @@ parseSet =
             )
 
 
+parseSeqDict : Parser ElmValue
+parseSeqDict =
+    P.sequence
+        { start = "SeqDict.fromList ["
+        , end = "]"
+        , separator = ","
+        , spaces = P.spaces
+        , item =
+            P.lazy
+                (\_ ->
+                    P.succeed Tuple.pair
+                        |. P.token "("
+                        |. P.spaces
+                        |= P.lazy (\_ -> parseValue)
+                        |. P.spaces
+                        |. P.token ","
+                        |. P.spaces
+                        |= parseValue
+                        |. P.spaces
+                        |. P.token ")"
+                )
+        , trailing = P.Forbidden
+        }
+        |> P.map
+            (\listVal ->
+                Expandable <| ElmDict listVal
+            )
+
+
+parseSeqSet : Parser ElmValue
+parseSeqSet =
+    P.sequence
+        { start = "SeqSet.fromList ["
+        , end = "]"
+        , separator = ","
+        , spaces = P.spaces
+        , item = P.lazy (\_ -> parseValue)
+        , trailing = P.Forbidden
+        }
+        |> P.map
+            (\listVal ->
+                Expandable <| ElmSequence SeqSet listVal
+            )
+
+
 
 {- ---- String parser ------ -}
 
@@ -527,7 +572,9 @@ parseValueWithoutCustomType =
         [ parseRecord
         , parseArray
         , parseSet
+        , parseSeqSet
         , parseDict
+        , parseSeqDict
         , parseList
         , parseKeywords
         , parseCustomTypeWithoutValue
@@ -546,7 +593,9 @@ parseValue =
         [ parseRecord
         , parseArray
         , parseSet
+        , parseSeqSet
         , parseDict
+        , parseSeqDict
         , parseList
         , parseKeywords
         , P.lazy (\_ -> parseCustomType)

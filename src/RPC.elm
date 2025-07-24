@@ -24,10 +24,6 @@ cleanDebugString text =
         |> String.replace "\\n" "\n"
         |> String.replace "\\t" "\t"
         |> String.replace "\\r" "\u{000D}"
-        |> String.replace "SeqDict.fromList " ""
-        |> String.replace "Set.fromList " ""
-        |> String.replace "Dict.fromList " ""
-        |> String.replace "Array.fromList " ""
         |> String.replace "\\\"" "'"
 
 
@@ -52,14 +48,6 @@ decodeElmValue =
             )
 
 
-decodeNullableElmValue : Decoder (Maybe ElmValue)
-decodeNullableElmValue =
-    Json.Decode.oneOf
-        [ Json.Decode.null Nothing
-        , Json.Decode.map Just decodeElmValue
-        ]
-
-
 decodeSessionName =
     Json.Decode.map SessionName Json.Decode.string
 
@@ -82,7 +70,7 @@ decodeDataType =
                             (Json.Decode.index 3 decodeElmValue)
                             (Json.Decode.index 4 Json.Decode.string)
                             (Json.Decode.index 5 Json.Decode.string)
-                            (Json.Decode.index 6 decodeNullableElmValue)
+                            (Json.Decode.index 6 (Json.Decode.nullable decodeElmValue))
                             (Json.Decode.maybe (Json.Decode.index 7 timeDecode))
                             |> Json.Decode.map UpdateFromFrontend
 
@@ -92,7 +80,7 @@ decodeDataType =
                             (Json.Decode.index 1 decodeSessionName)
                             (Json.Decode.index 2 decodeElmValue)
                             (Json.Decode.index 3 decodeElmValue)
-                            (Json.Decode.index 4 decodeNullableElmValue)
+                            (Json.Decode.index 4 (Json.Decode.nullable decodeElmValue))
                             (Json.Decode.maybe (Json.Decode.index 5 timeDecode))
                             |> Json.Decode.map Update
 
@@ -101,7 +89,7 @@ decodeDataType =
                             Init_
                             (Json.Decode.index 1 decodeSessionName)
                             (Json.Decode.index 2 decodeElmValue)
-                            (Json.Decode.index 3 decodeNullableElmValue)
+                            (Json.Decode.index 3 (Json.Decode.nullable decodeElmValue))
                             (Json.Decode.maybe (Json.Decode.index 4 timeDecode))
                             |> Json.Decode.map Init
 
