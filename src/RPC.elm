@@ -24,7 +24,7 @@ cleanDebugString text =
         |> String.replace "\\n" "\n"
         |> String.replace "\\t" "\t"
         |> String.replace "\\r" "\u{000D}"
-        |> String.replace "\\\"" "'"
+        |> String.replace "\\\"" "\""
 
 
 decodeElmValue : Decoder ElmValue
