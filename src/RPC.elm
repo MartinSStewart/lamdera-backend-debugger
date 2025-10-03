@@ -2,7 +2,7 @@ module RPC exposing (..)
 
 import Array exposing (Array)
 import DebugParser
-import DebugParser.ElmValue exposing (ElmValue(..), ExpandableValue(..), SequenceType(..))
+import DebugParser.ElmValue exposing (ElmValue(..), ExpandableValue(..), PlainValue(..), SequenceType(..))
 import Frontend
 import Http
 import Json.Decode exposing (Decoder)
@@ -18,17 +18,33 @@ import Time
 import Types exposing (BackendModel, BackendMsg(..), DataType(..), DebugSession, Event(..), Init_, SessionName(..), ToFrontend(..), UpdateFromFrontend_, Update_)
 
 
+cleanDebugString : String -> String
+cleanDebugString text =
+    text
+        |> String.replace "\\n" "\n"
+        |> String.replace "\\t" "\t"
+        |> String.replace "\\r" "\u{000D}"
+        |> String.replace "\\\"" "\""
+
+
 decodeElmValue : Decoder ElmValue
 decodeElmValue =
     Json.Decode.string
         |> Json.Decode.andThen
             (\text ->
-                case DebugParser.parse ("0: " ++ text) of
+                let
+                    cleanedText =
+                        cleanDebugString text
+
+                    textWithPrefix =
+                        "0: " ++ cleanedText
+                in
+                case DebugParser.parse textWithPrefix of
                     Ok ok ->
                         Json.Decode.succeed (refineElmValue ok.value)
 
                     Err error ->
-                        Json.Decode.fail error
+                        Json.Decode.succeed (Plain (ElmString ("Parse error: " ++ error ++ "\n\nOriginal: " ++ text)))
             )
 
 
@@ -112,6 +128,8 @@ dataEndpoint sessionId model request =
                 errorText =
                     "Failed to decode webhook: "
                         ++ Json.Decode.errorToString error
+                        ++ "\n\nReceived JSON: "
+                        ++ Json.Encode.encode 2 request
             in
             ( Err (Http.BadBody errorText), model, Cmd.none )
 
